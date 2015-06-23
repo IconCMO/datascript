@@ -600,7 +600,8 @@
     (-resolve-clause context clause)))
 
 (defn -q [context clauses]
-  (reduce resolve-clause context clauses))
+  (go
+  (reduce resolve-clause context clauses)))
 
 (defn -collect
   ([context symbols]
@@ -725,6 +726,7 @@
                         (resolve-ins (:in parsed-q) inputs))
         resultset     (-> context
                         (-q wheres)
+                        (<!)
                         (collect all-vars))]
     (cond->> resultset
       (:with q)
