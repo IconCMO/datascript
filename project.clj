@@ -3,17 +3,18 @@
   :license {:name "Eclipse"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :url "https://github.com/tonsky/datascript"
-  
+
   :dependencies [
     [org.clojure/clojure "1.7.0-RC1" :scope "provided"]
     [org.clojure/clojurescript "0.0-3308" :scope "provided"]
+    [org.clojure/core.async "0.1.346.0-17112a-alpha"]
   ]
-  
+
   :global-vars {
     *warn-on-reflection* true
 ;;     *unchecked-math* :warn-on-boxed
   }
-  
+
   :jvm-opts ["-Xmx2g" "-server"]
 
   :aliases {
@@ -30,7 +31,7 @@
           :optimizations :advanced
           :pretty-print  false
           :elide-asserts true
-          :output-wrapper false 
+          :output-wrapper false
           :warnings      {:single-segment-namespace false}
         }
         :notify-command ["release-js/wrap_bare.sh"]}
@@ -43,7 +44,7 @@
         [lein-cljsbuild "1.0.6"]
         [com.cemerick/clojurescript.test "0.3.3"]
       ]
-      :cljsbuild { 
+      :cljsbuild {
         :builds [
           { :id "advanced"
             :source-paths ["src" "bench/src" "test"]
@@ -76,7 +77,7 @@
       }
     }
   }
-  
+
   :clean-targets ^{:protect false} [
     "target"
     "release-js/datascript.bare.js"

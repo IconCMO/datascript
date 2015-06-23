@@ -1,4 +1,5 @@
 (ns datascript.query
+  (:require-macros [cljs.core.async.macros :refer [go]])
   (:require
    [#?(:cljs cljs.reader :clj clojure.edn) :as edn]
    [clojure.set :as set]
@@ -10,7 +11,8 @@
                                                 FindColl FindRel FindScalar FindTuple PlainSymbol
                                                 RulesVar SrcVar Variable]])]
    [datascript.pull-api :as dpa]
-   [datascript.pull-parser :as dpp])
+   [datascript.pull-parser :as dpp]
+   [cljs.core.async :refer [<! put! chan]])
   #?(:clj (:import [datascript.parser BindColl BindIgnore BindScalar BindTuple
                     Constant FindColl FindRel FindScalar FindTuple PlainSymbol
                     RulesVar SrcVar Variable])))
@@ -142,8 +144,8 @@
   'zero? zero?, 'pos? pos?, 'neg? neg?, 'even? even?, 'odd? odd?, 'true? true?,
   'false? false?, 'nil? nil?, 'str str, 'identity identity, 'vector vector,
   '-differ? -differ?, 'get-else -get-else, 'get-some -get-some, 'missing? -missing?, 'ground identity})
- 
-(def built-in-aggregates 
+
+(def built-in-aggregates
  (letfn [(sum [coll] (reduce + 0 coll))
          (avg [coll] (/ (sum coll) (count coll)))
          (median
@@ -162,8 +164,8 @@
                                  :let [delta (- x mean)]]
                              (* delta delta)))]
              (/ sum (count coll))))
-         (stddev 
-           [coll] 
+         (stddev
+           [coll]
            (#?(:cljs js/Math.sqrt :clj Math/sqrt) (variance coll)))]
    {'avg      avg
     'median   median
@@ -231,11 +233,11 @@
   BindIgnore
   (in->rel [_ _]
     (prod-rel))
-  
+
   BindScalar
   (in->rel [binding value]
     (Relation. {(get-in binding [:variable :symbol]) 0} [(into-array [value])]))
-  
+
   BindColl
   (in->rel [binding coll]
     (cond
@@ -247,7 +249,7 @@
       :else
         (reduce sum-rel
           (map #(in->rel (:binding binding) %) coll))))
-  
+
   BindTuple
   (in->rel [binding coll]
     (cond
@@ -707,6 +709,7 @@
       qp)))
 
 (defn q [q & inputs]
+  (go
   (let [parsed-q      (memoized-parse-query q)
         find          (:find parsed-q)
         find-elements (dp/find-elements find)
@@ -731,4 +734,4 @@
       (some dp/pull? find-elements)
         (pull find-elements context)
       true
-        (-post-process find))))
+        (-post-process find)))))
