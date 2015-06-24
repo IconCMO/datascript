@@ -1,6 +1,7 @@
 (ns datascript.core
   #?(:cljs (:refer-clojure :exclude [array? seqable? alength]))
-  #?(:cljs (:require-macros [datascript.core :refer [case-tree combine-cmp raise defrecord-updatable]]))
+  #?(:cljs (:require-macros [datascript.core :refer [case-tree combine-cmp raise defrecord-updatable]]
+                            [cljs.core.async.macros :refer [go]]))
   (:require
    #?@(:cljs [[cljs.core :as c]
               [goog.array :as garray]]
