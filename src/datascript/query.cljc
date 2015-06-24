@@ -381,11 +381,12 @@
     (concat ['$] clause)))
 
 (defn lookup-pattern [source pattern]
+  (go
   (cond
     (satisfies? dc/ISearch source)
       (lookup-pattern-db source pattern)
     :else
-      (lookup-pattern-coll source pattern)))
+      (lookup-pattern-coll source pattern))))
 
 (defn collapse-rels [rels new-rel]
   (loop [rels    rels
@@ -594,7 +595,7 @@
       (let [[source-sym & pattern] (normalize-pattern-clause clause)
             source   (get (:sources context) source-sym)
             pattern  (resolve-pattern-lookup-refs source pattern)
-            relation (lookup-pattern source pattern)
+            relation (<! (lookup-pattern source pattern))
             lookup-source? (satisfies? dc/IDB source)]
         (binding [*lookup-source* (when lookup-source? source)
                   *lookup-attrs*  (when lookup-source? (dynamic-lookup-attrs source pattern))]
