@@ -1,5 +1,5 @@
 (ns datascript.query
-  (:require-macros [cljs.core.async.macros :refer [go]])
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]])
   (:require
    [#?(:cljs cljs.reader :clj clojure.edn) :as edn]
    [clojure.set :as set]
@@ -590,6 +590,7 @@
           (update-in context [:rels] collapse-rels relation)))))
 
 (defn resolve-clause [context clause]
+  (go
   (if (rule? context clause)
     (let [[source rule] (if (source? (first clause))
                           [(first clause) (next clause)]
@@ -597,11 +598,19 @@
           source (get-in context [:sources source])
           rel    (solve-rule (assoc context :sources {'$ source}) rule)]
       (update-in context [:rels] collapse-rels rel))
-    (-resolve-clause context clause)))
+    (-resolve-clause context clause))))
+
+; TODO: could use some parallelism (if the order of the reduce doesn't matter)
+(defn async-reduce [f initial-value collection]
+  (go-loop [accumulator initial-value
+        collection-part collection]
+    (let [item (first collection-part)]
+      (if (nil? item)
+        accumulator
+        (recur (<! (f accumulator item)) (rest collection-part))))))
 
 (defn -q [context clauses]
-  (go
-  (reduce resolve-clause context clauses)))
+  (async-reduce resolve-clause context clauses))
 
 (defn -collect
   ([context symbols]
