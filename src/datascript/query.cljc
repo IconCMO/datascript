@@ -572,6 +572,7 @@
         (dc/ref? source a)) (conj v))))
 
 (defn -resolve-clause [context clause]
+  (go
   (condp looks-like? clause
     [[symbol? '*]] ;; predicate [(pred ?a ?b ?c)]
       (filter-by-pred context clause)
@@ -587,7 +588,7 @@
             lookup-source? (satisfies? dc/IDB source)]
         (binding [*lookup-source* (when lookup-source? source)
                   *lookup-attrs*  (when lookup-source? (dynamic-lookup-attrs source pattern))]
-          (update-in context [:rels] collapse-rels relation)))))
+          (update-in context [:rels] collapse-rels relation))))))
 
 (defn resolve-clause [context clause]
   (go
@@ -598,7 +599,7 @@
           source (get-in context [:sources source])
           rel    (solve-rule (assoc context :sources {'$ source}) rule)]
       (update-in context [:rels] collapse-rels rel))
-    (-resolve-clause context clause))))
+    (<! (-resolve-clause context clause)))))
 
 ; TODO: could use some parallelism (if the order of the reduce doesn't matter)
 (defn async-reduce [f initial-value collection]
