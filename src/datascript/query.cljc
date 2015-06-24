@@ -509,7 +509,7 @@
         final-attrs-map (zipmap final-attrs (range))
 ;;         clause-cache    (atom {}) ;; TODO
         solve           (fn [prefix-context clauses]
-                          (reduce -resolve-clause prefix-context clauses))
+                          (<! (async-reduce -resolve-clause prefix-context clauses)))
         empty-rels?     (fn [context]
                           (some #(empty? (:tuples %)) (:rels context)))]
     (loop [stack (list {:prefix-clauses []
