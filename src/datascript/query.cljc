@@ -77,6 +77,15 @@
 (defn lookup-ref? [form]
   (looks-like? [attr? '_] form))
 
+; TODO: could use some parallelism (if the order of the reduce doesn't matter)
+(defn async-reduce [f initial-value collection]
+  (go-loop [accumulator initial-value
+        collection-part collection]
+    (let [item (first collection-part)]
+      (if (nil? item)
+        accumulator
+        (recur (<! (f accumulator item)) (rest collection-part))))))
+
 ;; Relation algebra
 
 (defn join-tuples [t1 #?(:cljs idxs1
@@ -601,15 +610,6 @@
           rel    (<! (solve-rule (assoc context :sources {'$ source}) rule))]
       (update-in context [:rels] collapse-rels rel))
     (<! (-resolve-clause context clause)))))
-
-; TODO: could use some parallelism (if the order of the reduce doesn't matter)
-(defn async-reduce [f initial-value collection]
-  (go-loop [accumulator initial-value
-        collection-part collection]
-    (let [item (first collection-part)]
-      (if (nil? item)
-        accumulator
-        (recur (<! (f accumulator item)) (rest collection-part))))))
 
 (defn -q [context clauses]
   (async-reduce resolve-clause context clauses))
