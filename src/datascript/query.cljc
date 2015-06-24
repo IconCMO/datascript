@@ -495,6 +495,7 @@
      (remove pred guards)]))
 
 (defn solve-rule [context clause]
+  (go
   (let [final-attrs     (filter free-var? clause)
         final-attrs-map (zipmap final-attrs (range))
 ;;         clause-cache    (atom {}) ;; TODO
@@ -548,7 +549,7 @@
                                   :pending-guards pending-gs})
                                (next stack))
                              rel))))))))
-        rel))))
+        rel)))))
 
 (defn resolve-pattern-lookup-refs [source pattern]
   (if (satisfies? dc/IDB source)
@@ -597,7 +598,7 @@
                           [(first clause) (next clause)]
                           ['$ clause])
           source (get-in context [:sources source])
-          rel    (solve-rule (assoc context :sources {'$ source}) rule)]
+          rel    (<! (solve-rule (assoc context :sources {'$ source}) rule))]
       (update-in context [:rels] collapse-rels rel))
     (<! (-resolve-clause context clause)))))
 
