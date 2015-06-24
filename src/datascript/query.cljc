@@ -352,7 +352,7 @@
   ;; TODO optimize with bound attrs min/max values here
   (go
   (let [search-pattern (mapv #(if (symbol? %) nil %) pattern)
-        datoms         (dc/-search db search-pattern)
+        datoms         (<! (dc/-search db search-pattern))
         attr->prop     (->> (map vector pattern ["e" "a" "v" "tx"])
                             (filter (fn [[s _]] (free-var? s)))
                             (into {}))]

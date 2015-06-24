@@ -391,6 +391,7 @@
 
   ISearch
   (-search [db pattern]
+           (go
            (let [[e a v tx] pattern
                  eavt (.-eavt db)
                  aevt (.-aevt db)
@@ -419,7 +420,7 @@
                                                      (= tx (.-tx d)))) eavt)   ;; _ _ v tx
                          (filter (fn [^Datom d] (= v (.-v d))) eavt)           ;; _ _ v _
                          (filter (fn [^Datom d] (= tx (.-tx d))) eavt)         ;; _ _ _ tx
-                         eavt])))                                              ;; _ _ _ _
+                         eavt]))))                                             ;; _ _ _ _
 
   IIndexAccess
   (-datoms [db index cs]
