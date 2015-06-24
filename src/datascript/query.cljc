@@ -350,12 +350,13 @@
 
 (defn lookup-pattern-db [db pattern]
   ;; TODO optimize with bound attrs min/max values here
+  (go
   (let [search-pattern (mapv #(if (symbol? %) nil %) pattern)
         datoms         (dc/-search db search-pattern)
         attr->prop     (->> (map vector pattern ["e" "a" "v" "tx"])
                             (filter (fn [[s _]] (free-var? s)))
                             (into {}))]
-    (Relation. attr->prop datoms)))
+    (Relation. attr->prop datoms))))
 
 (defn matches-pattern? [pattern tuple]
   (loop [tuple   tuple
@@ -384,7 +385,7 @@
   (go
   (cond
     (satisfies? dc/ISearch source)
-      (lookup-pattern-db source pattern)
+      (<! (lookup-pattern-db source pattern))
     :else
       (lookup-pattern-coll source pattern))))
 
