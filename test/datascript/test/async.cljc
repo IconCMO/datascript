@@ -9,10 +9,13 @@
 
 (defn test-joins []
   (go
-    (let [db [ {:db/id 1, :name  "Ivan", :age   15 }
-                { :db/id 2, :name  "Petr", :age   37 }
-                { :db/id 3, :name  "Ivan", :age   37 }
-                { :db/id 4, :age 15 }]]
+    (let [db [[1 :name  "Ivan"]
+              [1 :age   15]
+              [2 :name  "Petr"]
+              [2 :age   37]
+              [3 :name  "Ivan"]
+              [3 :age   37]
+              [4 :age   15]]]
       (println (<! (d/q '[:find ?e
                     :where [?e :name]] db))
              #{[1] [2] [3]})
@@ -35,12 +38,12 @@
 
 (defn test-q-many []
   (go
-  (let [db [ [:db/add 1 :name "Ivan"]
-                            [:db/add 1 :aka  "ivolga"]
-                            [:db/add 1 :aka  "pi"]
-                            [:db/add 2 :name "Petr"]
-                            [:db/add 2 :aka  "porosenok"]
-                            [:db/add 2 :aka  "pi"] ]]
+  (let [db [[1 :name "Ivan"]
+            [1 :aka  "ivolga"]
+            [1 :aka  "pi"]
+            [2 :name "Petr"]
+            [2 :aka  "porosenok"]
+            [2 :aka  "pi"]]]
     (println (<! (d/q '[:find  ?n1 ?n2
                   :where [?e1 :aka ?x]
                          [?e2 :aka ?x]
@@ -75,9 +78,12 @@
 
 (defn test-q-in []
   (go
-  (let [db [ { :db/id 1, :name  "Ivan", :age   15 }
-                            { :db/id 2, :name  "Petr", :age   37 }
-                            { :db/id 3, :name  "Ivan", :age   37 }]
+  (let [db [[1 :name  "Ivan"]
+            [1 :age   15]
+            [2 :name  "Petr"]
+            [2 :age   37]
+            [3 :name  "Ivan"]
+            [3 :age   37]]
         query '{:find  [?e]
                 :in    [$ ?attr ?value]
                 :where [[?e ?attr ?value]]}]
@@ -113,9 +119,12 @@
 
 (defn test-bindings []
   (go
-  (let [db [ { :db/id 1, :name  "Ivan", :age   15 }
-                          { :db/id 2, :name  "Petr", :age   37 }
-                          { :db/id 3, :name  "Ivan", :age   37 }]]
+  (let [db [[1 :name  "Ivan"]
+            [1 :age   15]
+            [2 :name  "Petr"]
+            [2 :age   37]
+            [3 :name  "Ivan"]
+            [3 :age   37]]]
     ; (testing "Relation binding"
       (println (<! (d/q '[:find  ?e ?email
                     :in    $ [[?n ?email]]
