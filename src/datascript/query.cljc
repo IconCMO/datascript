@@ -512,7 +512,7 @@
         final-attrs-map (zipmap final-attrs (range))
 ;;         clause-cache    (atom {}) ;; TODO
         solve           (fn [prefix-context clauses]
-                          (<! (async-reduce -resolve-clause prefix-context clauses)))
+                          (go (<! (async-reduce -resolve-clause prefix-context clauses))))
         empty-rels?     (fn [context]
                           (some #(empty? (:tuples %)) (:rels context)))]
     (loop [stack (list {:prefix-clauses []
@@ -526,7 +526,7 @@
           (if (nil? rule-clause)
 
             ;; no rules -> expand, collect, sum
-            (let [context (solve (:prefix-context frame) clauses)
+            (let [context (<! (solve (:prefix-context frame) clauses))
                   tuples  (-collect context final-attrs)
                   new-rel (Relation. final-attrs-map tuples)]
               (recur (next stack) (sum-rel rel new-rel)))
@@ -542,7 +542,7 @@
                 (recur (next stack) rel)
 
                 (let [prefix-clauses (concat clauses active-gs)
-                      prefix-context (solve (:prefix-context frame) prefix-clauses)]
+                      prefix-context (<! (solve (:prefix-context frame) prefix-clauses))]
                   (if (empty-rels? prefix-context)
 
                     ;; this branch has no data, just drop it from stack
