@@ -4,10 +4,11 @@
                             [cljs.core.async.macros :refer [go]]))
   (:require
    #?@(:cljs [[cljs.core :as c]
-              [goog.array :as garray]]
+              [goog.array :as garray]
+              [cljs.core.async :refer [chan]]]
        :clj  [[clojure.core :as c]
               ;; don't really use core.async in the :clj version, but need this here so everything compiles (since the macros come from the :clj version)
-              [clojure.core.async :as a :refer [<! go]]])
+              [clojure.core.async :as a :refer [<! go chan]]])
     clojure.walk
    [datascript.btset :as btset]))
 
