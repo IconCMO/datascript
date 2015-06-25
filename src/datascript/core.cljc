@@ -10,7 +10,7 @@
               ;; don't really use core.async in the :clj version, but need this here so everything compiles (since the macros come from the :clj version)
               [clojure.core.async :as a :refer [<! go chan]]])
     clojure.walk
-   [datascript.btset :as btset]))
+   [datascript.async-btset :as btset]))
 
 ;; ----------------------------------------------------------------------------
 
