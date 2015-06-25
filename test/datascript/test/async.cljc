@@ -1,10 +1,11 @@
 (ns datascript.test.async
-  (:require-macros [cljs.core.async.macros :refer [go]])
+  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
   (:require
    [datascript :as d]
    [datascript.core :as dc]
    [datascript.test.core :as tdc]
-   [cljs.core.async :refer [<! put! chan]]))
+   #?(:cljs [cljs.core.async :refer [<! put! chan]]
+      :clj  [clojure.core.async :refer [<! put! chan go go-loop]])))
 
 (defn test-joins []
   (go
