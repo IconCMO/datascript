@@ -24,3 +24,5 @@
 ;; constrain these versions to a single key, since protocol uses 2nd arg, and we ignore it.
 (defn btset-conj [set key _] (conj set key))
 (defn btset-disj [set key _] (disj set key))
+
+(defn -btset-from-sorted-arr [_ _])
