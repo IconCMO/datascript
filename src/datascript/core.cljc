@@ -5,7 +5,9 @@
   (:require
    #?@(:cljs [[cljs.core :as c]
               [goog.array :as garray]]
-       :clj  [[clojure.core :as c]])
+       :clj  [[clojure.core :as c]
+              ;; don't really use core.async in the :clj version, but need this here so everything compiles (since the macros come from the :clj version)
+              [clojure.core.async :as a :refer [<! go]]])
     clojure.walk
    [datascript.btset :as btset]))
 
