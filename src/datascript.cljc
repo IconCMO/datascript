@@ -1,11 +1,14 @@
 (ns datascript
+  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
   (:refer-clojure :exclude [filter])
   (:require
     [datascript.core :as dc #?@(:cljs [:refer [FilteredDB]])]
     [datascript.pull-api :as dp]
     [datascript.query :as dq]
     [datascript.impl.entity :as de]
-    [datascript.btset :as btset])
+    [datascript.btset :as btset]
+    #?(:cljs [cljs.core.async :refer [<! put! chan]]
+       :clj  [clojure.core.async :refer [<! put! chan go go-loop]]))
   #?(:clj
     (:import
       [datascript.core FilteredDB]
@@ -45,17 +48,19 @@
 (defn with
   ([db tx-data] (with db tx-data nil))
   ([db tx-data tx-meta]
+    (go
     (if (is-filtered db)
       (throw (ex-info "Filtered DB cannot be modified" {:error :transaction/filtered}))
-      (dc/transact-tx-data (dc/map->TxReport
+      (<! (dc/transact-tx-data (dc/map->TxReport
                              { :db-before db
                                :db-after  db
                                :tx-data   []
                                :tempids   {}
-                               :tx-meta   tx-meta}) tx-data))))
+                               :tx-meta   tx-meta}) tx-data))))))
 
 (defn db-with [db tx-data]
-  (:db-after (with db tx-data)))
+  (go
+  (:db-after (<! (with db tx-data)))))
 
 (defn datoms
   ([db index] (dc/-datoms db index []))
@@ -98,7 +103,7 @@
       (doseq [[_ callback] @(:listeners (meta conn))]
         (callback report))
       report)))
-           
+
 (defn listen!
   ([conn callback] (listen! conn (rand) callback))
   ([conn key callback]
