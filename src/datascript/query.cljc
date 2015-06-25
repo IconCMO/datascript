@@ -1,5 +1,5 @@
 (ns datascript.query
-  (:require-macros [cljs.core.async.macros :refer [go go-loop]])
+  #?(:cljs (:require-macros [cljs.core.async.macros :refer [go go-loop]]))
   (:require
    [#?(:cljs cljs.reader :clj clojure.edn) :as edn]
    [clojure.set :as set]
@@ -12,7 +12,8 @@
                                                 RulesVar SrcVar Variable]])]
    [datascript.pull-api :as dpa]
    [datascript.pull-parser :as dpp]
-   [cljs.core.async :refer [<! put! chan]])
+   #?(:cljs [cljs.core.async :refer [<! put! chan]]
+      :clj  [clojure.core.async :refer [<! put! chan go go-loop]]))
   #?(:clj (:import [datascript.parser BindColl BindIgnore BindScalar BindTuple
                     Constant FindColl FindRel FindScalar FindTuple PlainSymbol
                     RulesVar SrcVar Variable])))
