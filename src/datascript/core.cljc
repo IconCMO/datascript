@@ -372,25 +372,25 @@
                  aevt (.-aevt db)
                  avet (.-avet db)]
              (case-tree [e a (some? v) tx]
-                        [(btset/slice eavt (Datom. e a v tx nil))              ;; e a v tx
-                         (btset/slice eavt (Datom. e a v nil nil))             ;; e a v _
-                         (->> (btset/slice eavt (Datom. e a nil nil nil))      ;; e a _ tx
+                        [(<! (btset/slice eavt (Datom. e a v tx nil)))              ;; e a v tx
+                         (<! (btset/slice eavt (Datom. e a v nil nil)))             ;; e a v _
+                         (->> (<! (btset/slice eavt (Datom. e a nil nil nil)))      ;; e a _ tx
                               (filter (fn [^Datom d] (= tx (.-tx d)))))
-                         (btset/slice eavt (Datom. e a nil nil nil))           ;; e a _ _
-                         (->> (btset/slice eavt (Datom. e nil nil nil nil))    ;; e _ v tx
+                         (<! (btset/slice eavt (Datom. e a nil nil nil)))           ;; e a _ _
+                         (->> (<! (btset/slice eavt (Datom. e nil nil nil nil)))    ;; e _ v tx
                               (filter (fn [^Datom d] (and (= v (.-v d))
                                                           (= tx (.-tx d))))))
-                         (->> (btset/slice eavt (Datom. e nil nil nil nil))    ;; e _ v _
+                         (->> (<! (btset/slice eavt (Datom. e nil nil nil nil)))    ;; e _ v _
                               (filter (fn [^Datom d] (= v (.-v d)))))
-                         (->> (btset/slice eavt (Datom. e nil nil nil nil))    ;; e _ _ tx
+                         (->> (<! (btset/slice eavt (Datom. e nil nil nil nil)))    ;; e _ _ tx
                               (filter (fn [^Datom d] (= tx (.-tx d)))))
-                         (btset/slice eavt (Datom. e nil nil nil nil))         ;; e _ _ _
-                         (->> (btset/slice avet (Datom. nil a v nil nil))      ;; _ a v tx
+                         (<! (btset/slice eavt (Datom. e nil nil nil nil)))         ;; e _ _ _
+                         (->> (<! (btset/slice avet (Datom. nil a v nil nil)))      ;; _ a v tx
                               (filter (fn [^Datom d] (= tx (.-tx d)))))
-                         (btset/slice avet (Datom. nil a v nil nil))           ;; _ a v _
-                         (->> (btset/slice avet (Datom. nil a nil nil nil))    ;; _ a _ tx
+                         (<! (btset/slice avet (Datom. nil a v nil nil)))           ;; _ a v _
+                         (->> (<! (btset/slice avet (Datom. nil a nil nil nil)))    ;; _ a _ tx
                               (filter (fn [^Datom d] (= tx (.-tx d)))))
-                         (btset/slice avet (Datom. nil a nil nil nil))         ;; _ a _ _
+                         (<! (btset/slice avet (Datom. nil a nil nil nil)))         ;; _ a _ _
                          (filter (fn [^Datom d] (and (= v (.-v d))
                                                      (= tx (.-tx d)))) eavt)   ;; _ _ v tx
                          (filter (fn [^Datom d] (= v (.-v d))) eavt)           ;; _ _ v _
