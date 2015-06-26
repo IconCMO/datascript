@@ -153,7 +153,7 @@
   ([e a v]          (Datom. e a v tx0 true))
   ([e a v tx]       (Datom. e a v tx true))
   ([e a v tx added] (Datom. e a v tx added)))
-  
+
 (defn datom? [x] (instance? Datom x))
 
 (defn- hash-datom [^Datom d]
@@ -773,10 +773,10 @@
   (cond
     (keyword? attr)
     (= \_ (nth (name attr) 0))
-    
+
     (string? attr)
     (boolean (re-matches #"(?:([^/]+)/)?_([^/]+)" attr))
-   
+
     :else
     (raise "Bad attribute type: " attr ", expected keyword or string"
            {:error :transact/syntax, :attribute attr})))
@@ -793,7 +793,7 @@
      (if (= \_ (nth name 0))
        (if ns (str ns "/" (subs name 1)) (subs name 1))
        (if ns (str ns "/_" name) (str "_" name))))
-   
+
    :else
     (raise "Bad attribute type: " attr ", expected keyword or string"
            {:error :transact/syntax, :attribute attr})))
@@ -810,7 +810,7 @@
                 (-> ent (dissoc a) (assoc :db/id new-eid)) ;; replace upsert attr with :db/id
               (= old-eid new-eid)
                 (dissoc ent a) ;; upsert attr already in db
-              :else              
+              :else
                 (raise "Cannot resolve upsert for " entity ": " {:db/id old-eid a v} " conflicts with existing " datom
                        {:error     :transact/upsert
                         :attribute a
@@ -833,12 +833,12 @@
     (not (or (shim/array? vs)
              (and (coll? vs) (not (map? vs)))))
     [vs]
-    
+
     ;; probably lookup ref
     (and (= (count vs) 2)
          (is-attr? db (first vs) :db.unique/identity))
     [vs]
-    
+
     :else vs))
 
 
@@ -907,7 +907,7 @@
 
       (map? entity)
         (let [old-eid      (:db/id entity)
-              known-eid    (->> 
+              known-eid    (->>
                              (cond
                                (shim/neg-number? old-eid) (get-in report [:tempids old-eid])
                                (tx-id? old-eid)      (current-tx report)
@@ -948,10 +948,10 @@
                       (recur (<! (transact-add report [:db/add e a nv])) entities)
                       (raise ":db.fn/cas failed on datom [" e " " a " " v "], expected " ov
                              {:error :transact/cas, :old (first datoms), :expected ov, :new nv })))))
-           
+
             (tx-id? e)
               (recur report (concat [[op (current-tx report) a v]] entities))
-           
+
             (and (ref? db a) (tx-id? v))
               (recur report (concat [[op e a (current-tx report)]] entities))
 
@@ -990,7 +990,7 @@
                     v-datoms (mapcat (fn [a] (go (<! (-search db [nil a e])))) (-attrs-by db :db.type/ref))]
                 (recur (reduce transact-retract-datom report (concat e-datoms v-datoms))
                        (concat (retract-components db e-datoms) entities)))
-           
+
            :else
              (raise "Unknown operation at " entity ", expected :db/add, :db/retract, :db.fn/call, :db.fn/retractAttribute or :db.fn/retractEntity"
                     {:error :transact/syntax, :operation op, :tx-data entity})))
