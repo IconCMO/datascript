@@ -256,25 +256,43 @@
 ;; Such datoms come from slice method where they are used as boundary markers.
 
 (defn cmp-datoms-eavt [^Datom d1, ^Datom d2]
+  (cond
+    (nil? d1)
+      1
+    (nil? d2)
+      -1
+    :else
   (combine-cmp
     (cmp-num (.-e d1) (.-e d2))
     (cmp (.-a d1) (.-a d2))
     (cmp-val (.-v d1) (.-v d2))
-    (cmp-num (.-tx d1) (.-tx d2))))
+    (cmp-num (.-tx d1) (.-tx d2)))))
 
 (defn cmp-datoms-aevt [^Datom d1, ^Datom d2]
+  (cond
+    (nil? d1)
+      1
+    (nil? d2)
+      -1
+    :else
   (combine-cmp
     (cmp (.-a d1) (.-a d2))
     (cmp-num (.-e d1) (.-e d2))
     (cmp-val (.-v d1) (.-v d2))
-    (cmp-num (.-tx d1) (.-tx d2))))
+    (cmp-num (.-tx d1) (.-tx d2)))))
 
 (defn cmp-datoms-avet [^Datom d1, ^Datom d2]
+  (cond
+    (nil? d1)
+      1
+    (nil? d2)
+      -1
+    :else
   (combine-cmp
     (cmp (.-a d1) (.-a d2))
     (cmp-val (.-v d1) (.-v d2))
     (cmp-num (.-e d1) (.-e d2))
-    (cmp-num (.-tx d1) (.-tx d2))))
+    (cmp-num (.-tx d1) (.-tx d2)))))
 
 
 ;; fast versions without nil checks
