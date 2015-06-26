@@ -598,7 +598,7 @@
      (pr-sequential-writer w
                            (fn [d w opts]
                              (pr-sequential-writer w pr-writer "[" " " "]" opts [(.-e d) (.-a d) (.-v d) (.-tx d)]))
-                           "[" " " "]" opts (-datoms db :eavt []))
+                           "[" " " "]" opts (:eavt db))
      (-write w "}")))
 
 #?(:clj
