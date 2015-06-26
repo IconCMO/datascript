@@ -791,9 +791,9 @@
 (defn- transact-report [report datom]
   (go
   (let [old-db (:db-after report)
-        new-db (<! with-datom old-db datom)]
+        new-db (<! (with-datom old-db datom))]
   (-> report
-      (update [:db-after] new-db)
+      (conj [:db-after new-db])
       (update-in [:tx-data] conj datom)))))
 
 (defn #?@(:clj  [^Boolean reverse-ref?]
