@@ -4,17 +4,37 @@
    [datascript :as d]
    [datascript.core :as dc]
    [datascript.test.core :as tdc]
+   [datascript.async-btset :as btset]
    #?(:cljs [cljs.core.async :refer [<! put! chan]]
       :clj  [clojure.core.async :refer [<! put! chan go go-loop]])))
 
+(defn empty-db
+  ([]
+    (dc/map->DB {
+      :schema  nil
+      :eavt    (btset/btset-by dc/cmp-datoms-eavt)
+      :aevt    (btset/btset-by dc/cmp-datoms-aevt)
+      :avet    (btset/btset-by dc/cmp-datoms-avet)
+      :max-eid 0
+      :max-tx  0
+      :rschema {}})))
+
+(defn with-datom [db & datom]
+  (-> db
+    (update-in [:eavt] btset/btset-conj (apply dc/datom datom) dc/cmp-datoms-eavt-quick)
+    (update-in [:aevt] btset/btset-conj (apply dc/datom datom) dc/cmp-datoms-aevt-quick)
+    (update-in [:avet] btset/btset-conj (apply dc/datom datom) dc/cmp-datoms-avet-quick)))
+
 (defn test-joins []
   (go
-    (let [db (-> (d/empty-db)
-                 (d/db-with [ { :db/id 1, :name  "Ivan", :age   15 }
-                              { :db/id 2, :name  "Petr", :age   37 }
-                              { :db/id 3, :name  "Ivan", :age   37 }
-                              { :db/id 4, :age 15 }])
-                 (<!))]
+    (let [db (-> (empty-db)
+                 (with-datom 1 :name "Ivan")
+                 (with-datom 1 :age 15)
+                 (with-datom 2 :name "Petr")
+                 (with-datom 2 :age 37)
+                 (with-datom 3 :name "Ivan")
+                 (with-datom 3 :age 37)
+                 (with-datom 4 :age 15))]
       (println (<! (d/q '[:find ?e
                     :where [?e :name]] db))
              #{[1] [2] [3]})
@@ -37,14 +57,13 @@
 
 (defn test-q-many []
   (go
-  (let [db (-> (d/empty-db {:aka {:db/cardinality :db.cardinality/many}})
-               (d/db-with [ [:db/add 1 :name "Ivan"]
-                            [:db/add 1 :aka  "ivolga"]
-                            [:db/add 1 :aka  "pi"]
-                            [:db/add 2 :name "Petr"]
-                            [:db/add 2 :aka  "porosenok"]
-                            [:db/add 2 :aka  "pi"] ])
-               (<!))]
+  (let [db (-> (empty-db)
+               (with-datom 1 :name "Ivan")
+               (with-datom 1 :aka  "ivolga")
+               (with-datom 1 :aka  "pi")
+               (with-datom 2 :name "Petr")
+               (with-datom 2 :aka  "porosenok")
+               (with-datom 2 :aka  "pi"))]
     (println (<! (d/q '[:find  ?n1 ?n2
                   :where [?e1 :aka ?x]
                          [?e2 :aka ?x]
@@ -79,11 +98,13 @@
 
 (defn test-q-in []
   (go
-  (let [db (-> (d/empty-db)
-               (d/db-with [ { :db/id 1, :name  "Ivan", :age   15 }
-                            { :db/id 2, :name  "Petr", :age   37 }
-                            { :db/id 3, :name  "Ivan", :age   37 }])
-               (<!))
+  (let [db (-> (empty-db)
+               (with-datom 1 :name  "Ivan")
+               (with-datom 1 :age   15 )
+               (with-datom 2 :name  "Petr")
+               (with-datom 2 :age   37 )
+               (with-datom 3 :name  "Ivan")
+               (with-datom 3 :age   37 ))
         query '{:find  [?e]
                 :in    [$ ?attr ?value]
                 :where [[?e ?attr ?value]]}]
@@ -119,11 +140,13 @@
 
 (defn test-bindings []
   (go
-  (let [db (-> (d/empty-db)
-             (d/db-with [ { :db/id 1, :name  "Ivan", :age   15 }
-                          { :db/id 2, :name  "Petr", :age   37 }
-                          { :db/id 3, :name  "Ivan", :age   37 }])
-             (<!))]
+  (let [db (-> (empty-db)
+               (with-datom 1 :name  "Ivan")
+               (with-datom 1 :age   15 )
+               (with-datom 2 :name  "Petr")
+               (with-datom 2 :age   37 )
+               (with-datom 3 :name  "Ivan")
+               (with-datom 3 :age   37 ))]
     ; (testing "Relation binding"
       (println (<! (d/q '[:find  ?e ?email
                     :in    $ [[?n ?email]]
