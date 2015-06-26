@@ -1,43 +1,15 @@
 (ns datascript.core
-  #?(:cljs (:refer-clojure :exclude [array? seqable? alength]))
   #?(:cljs (:require-macros [datascript.core :refer [case-tree combine-cmp raise defrecord-updatable]]
                             [cljs.core.async.macros :refer [go go-loop]]))
   (:require
-   #?@(:cljs [[cljs.core :as c]
-              [goog.array :as garray]
+   #?@(:cljs [[goog.array :as garray]
               [cljs.core.async :refer [<! chan]]]
-       :clj  [[clojure.core :as c]
-              ;; don't really use core.async in the :clj version, but need this here so everything compiles (since the macros come from the :clj version)
-              [clojure.core.async :as a :refer [<! go go-loop chan]]])
+       :clj  [[clojure.core.async :as a :refer [<! go go-loop chan]]]) ;; don't really use core.async in the :clj version, but need this here so everything compiles (since the macros come from the :clj version)
     clojure.walk
-   [datascript.async-btset :as btset]))
+    [datascript.shim :as shim]
+    [datascript.async-btset :as btset]))
 
 ;; ----------------------------------------------------------------------------
-
-#?(:cljs (defn arr [size](make-array size))
-   :clj  (defn ^{:tag "[[Ljava.lang.Object;"} arr [size]
-           (make-array java.lang.Object size)))
-
-(defn into-arr [aseq]
-  #?(:cljs (into-array aseq)
-     :clj  (into-array java.lang.Object aseq)))
-
-(def array?
-  #?(:cljs c/array?
-     :clj  (fn array? [^Object x] (-> x .getClass .isArray))))
-
-(def seqable?
-  #?(:cljs c/seqable?
-     :clj (fn seqable? [x]
-            (or (seq? x)
-                (instance? clojure.lang.Seqable x)
-                (nil? x)
-                (instance? Iterable x)
-                (array? x)
-                (string? x)
-                (instance? java.util.Map x)))))
-
-(def neg-number? (every-pred number? neg?))
 
 #?(:cljs
    (do
@@ -181,7 +153,7 @@
   ([e a v]          (Datom. e a v tx0 true))
   ([e a v tx]       (Datom. e a v tx true))
   ([e a v tx added] (Datom. e a v tx added)))
-
+  
 (defn datom? [x] (instance? Datom x))
 
 (defn- hash-datom [^Datom d]
@@ -566,7 +538,7 @@
       (empty-db schema)
       (let [_ (validate-schema schema)
             #?@(:cljs
-                [ds-arr  (into-array datoms)
+                [ds-arr  (shim/into-array datoms)
                  eavt    (btset/-btset-from-sorted-arr (.sort ds-arr cmp-datoms-eavt-quick) cmp-datoms-eavt)
                  aevt    (btset/-btset-from-sorted-arr (.sort ds-arr cmp-datoms-aevt-quick) cmp-datoms-aevt)
                  avet    (btset/-btset-from-sorted-arr (.sort ds-arr cmp-datoms-avet-quick) cmp-datoms-avet)
@@ -602,7 +574,7 @@
          (set!   (.-__hash db) (hash-ordered-coll (-datoms db :eavt []))))
      :clj
      (or @(.-__hash db)
-         (reset! (.-__hash db) (hash-ordered-coll (-datoms db :eavt []))))))
+         (reset! (.-__hash db) (hash-ordered-coll (or (-datoms db :eavt []) []))))))
 
 (defn- hash-fdb [^FilteredDB db]
   #?(:cljs
@@ -610,7 +582,7 @@
          (set!   (.-__hash db) (hash-ordered-coll (-datoms db :eavt []))))
      :clj
      (or @(.-__hash db)
-         (reset! (.-__hash db) (hash-ordered-coll (-datoms db :eavt []))))))
+         (reset! (.-__hash db) (hash-ordered-coll (or (-datoms db :eavt []) []))))))
 
 (defn- equiv-db [db other]
   (and (or (instance? DB other) (instance? FilteredDB other))
@@ -801,10 +773,10 @@
   (cond
     (keyword? attr)
     (= \_ (nth (name attr) 0))
-
+    
     (string? attr)
     (boolean (re-matches #"(?:([^/]+)/)?_([^/]+)" attr))
-
+   
     :else
     (raise "Bad attribute type: " attr ", expected keyword or string"
            {:error :transact/syntax, :attribute attr})))
@@ -821,7 +793,7 @@
      (if (= \_ (nth name 0))
        (if ns (str ns "/" (subs name 1)) (subs name 1))
        (if ns (str ns "/_" name) (str "_" name))))
-
+   
    :else
     (raise "Bad attribute type: " attr ", expected keyword or string"
            {:error :transact/syntax, :attribute attr})))
@@ -838,7 +810,7 @@
                 (-> ent (dissoc a) (assoc :db/id new-eid)) ;; replace upsert attr with :db/id
               (= old-eid new-eid)
                 (dissoc ent a) ;; upsert attr already in db
-              :else
+              :else              
                 (raise "Cannot resolve upsert for " entity ": " {:db/id old-eid a v} " conflicts with existing " datom
                        {:error     :transact/upsert
                         :attribute a
@@ -858,15 +830,15 @@
     [vs]
 
     ;; not a collection at all, so definitely a single value
-    (not (or (array? vs)
+    (not (or (shim/array? vs)
              (and (coll? vs) (not (map? vs)))))
     [vs]
-
+    
     ;; probably lookup ref
     (and (= (count vs) 2)
          (is-attr? db (first vs) :db.unique/identity))
     [vs]
-
+    
     :else vs))
 
 
@@ -935,9 +907,9 @@
 
       (map? entity)
         (let [old-eid      (:db/id entity)
-              known-eid    (->>
+              known-eid    (->> 
                              (cond
-                               (neg-number? old-eid) (get-in report [:tempids old-eid])
+                               (shim/neg-number? old-eid) (get-in report [:tempids old-eid])
                                (tx-id? old-eid)      (current-tx report)
                                :else                 old-eid)
                              (entid-some db))
@@ -946,7 +918,7 @@
               new-entity   (assoc upserted :db/id new-eid)
               new-report   (cond
                              (nil? old-eid) (allocate-eid report new-eid)
-                             (neg-number? old-eid) (allocate-eid report old-eid new-eid)
+                             (shim/neg-number? old-eid) (allocate-eid report old-eid new-eid)
                              :else report)]
           (recur new-report (concat (explode db new-entity) entities)))
 
@@ -976,19 +948,19 @@
                       (recur (<! (transact-add report [:db/add e a nv])) entities)
                       (raise ":db.fn/cas failed on datom [" e " " a " " v "], expected " ov
                              {:error :transact/cas, :old (first datoms), :expected ov, :new nv })))))
-
+           
             (tx-id? e)
               (recur report (concat [[op (current-tx report) a v]] entities))
-
+           
             (and (ref? db a) (tx-id? v))
               (recur report (concat [[op e a (current-tx report)]] entities))
 
-            (neg-number? e)
+            (shim/neg-number? e)
               (if-let [eid (get-in report [:tempids e])]
                 (recur report (concat [[op eid a v]] entities))
                 (recur (allocate-eid report e (next-eid db)) es))
 
-            (and (ref? db a) (neg-number? v))
+            (and (ref? db a) (shim/neg-number? v))
               (if-let [vid (get-in report [:tempids v])]
                 (recur report (concat [[op e a vid]] entities))
                 (recur (allocate-eid report v (next-eid db)) es))
@@ -1018,7 +990,7 @@
                     v-datoms (mapcat (fn [a] (go (<! (-search db [nil a e])))) (-attrs-by db :db.type/ref))]
                 (recur (reduce transact-retract-datom report (concat e-datoms v-datoms))
                        (concat (retract-components db e-datoms) entities)))
-
+           
            :else
              (raise "Unknown operation at " entity ", expected :db/add, :db/retract, :db.fn/call, :db.fn/retractAttribute or :db.fn/retractEntity"
                     {:error :transact/syntax, :operation op, :tx-data entity})))

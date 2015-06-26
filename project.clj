@@ -5,7 +5,7 @@
   :url "https://github.com/tonsky/datascript"
 
   :dependencies [
-    [org.clojure/clojure "1.7.0-RC1" :scope "provided"]
+    [org.clojure/clojure "1.7.0-RC2" :scope "provided"]
     [org.clojure/clojurescript "0.0-3308" :scope "provided"]
     [org.clojure/core.async "0.1.346.0-17112a-alpha"]
   ]
@@ -17,9 +17,9 @@
 
   :jvm-opts ["-Xmx2g" "-server"]
 
-  :aliases {
-    "test-clj" ["run" "-m" "datascript.test/test-all"]
-    "noderepl" ["run" "-m" "clojure.main" "repl.clj"]}
+  :aliases {"test-clj"     ["run" "-m" "datascript.test/test-most"]
+            "test-clj-all" ["run" "-m" "datascript.test/test-all"]
+            "noderepl"     ["run" "-m" "clojure.main" "repl.clj"]}
 
   :cljsbuild {
     :builds [
@@ -42,7 +42,6 @@
       :source-paths ["bench/src" "test"]
       :plugins [
         [lein-cljsbuild "1.0.6"]
-        [com.cemerick/clojurescript.test "0.3.3"]
       ]
       :cljsbuild {
         :builds [
@@ -70,10 +69,6 @@
               :recompile-dependents false
             }}
         ]
-        :test-commands {
-          "datascript.test"    [ "phantomjs" :runner "target/datascript.js" ]
-          "datascript.test.js" [ "phantomjs" "test/js/runner.js" ]
-        }
       }
     }
   }

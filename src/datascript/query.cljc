@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.walk :as walk]
    [datascript.core :as dc #?(:cljs :refer-macros :clj :refer) [raise]]
+   [datascript.shim :as shim]
    [datascript.lru]
    [datascript.impl.entity :as de]
    [datascript.parser :as dp #?@(:cljs [:refer [BindColl BindIgnore BindScalar BindTuple Constant
@@ -95,7 +96,7 @@
                          :clj  ^{:tag "[[Ljava.lang.Object;"} idxs2)]
   (let [l1  (alength idxs1)
         l2  (alength idxs2)
-        res (dc/arr (+ l1 l2))]
+        res (shim/make-array (+ l1 l2))]
     (dotimes [i l1]
       (aset res i (#?(:cljs aget :clj get) t1 (aget idxs1 i)))) ;; FIXME aget
     (dotimes [i l2]
@@ -106,7 +107,7 @@
   (Relation. (:attrs a) (concat (:tuples a) (:tuples b))))
 
 (defn prod-rel
-  ([] (Relation. {} [(dc/arr 0)]))
+  ([] (Relation. {} [(shim/make-array 0)]))
   ([rel1 rel2]
     (let [attrs1 (keys (:attrs rel1))
           attrs2 (keys (:attrs rel2))
@@ -229,7 +230,7 @@
     (group-by ffirst rules)))
 
 (defn bindable-to-seq? [x]
-  (or (dc/seqable? x) (dc/array? x)))
+  (or (shim/seqable? x) (shim/array? x)))
 
 (defn empty-rel [binding]
   (let [vars (->> (dp/collect-vars-distinct binding)
@@ -310,7 +311,7 @@
     (let [getters (to-array getters)]
       (fn [tuple]
         (list* #?(:cljs (.map getters #(% tuple))
-                  :clj  (dc/into-arr (map #(% tuple) getters))))))))
+                  :clj  (shim/into-array (map #(% tuple) getters))))))))
 
 (defn hash-attrs [key-fn tuples]
   (loop [tuples     tuples
@@ -620,7 +621,7 @@
 (defn -collect
   ([context symbols]
     (let [rels (:rels context)]
-      (-collect [(dc/arr (count symbols))] rels symbols)))
+      (-collect [(shim/make-array (count symbols))] rels symbols)))
   ([acc rels symbols]
     (if-let [rel (first rels)]
       (let [keep-attrs (select-keys (:attrs rel) symbols)]
