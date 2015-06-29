@@ -620,9 +620,11 @@
 
 (defn -collect
   ([context symbols]
+    (println "-----------collect2" context symbols)
     (let [rels (:rels context)]
       (-collect [(shim/make-array (count symbols))] rels symbols)))
   ([acc rels symbols]
+    (println "-----------collect3" acc rels symbols)
     (if-let [rel (first rels)]
       (let [keep-attrs (select-keys (:attrs rel) symbols)]
         (if (empty? keep-attrs)

@@ -613,10 +613,10 @@
      (-write w ":schema ")
      (pr-writer (-schema db) w opts)
      (-write w ", :datoms ")
-     (pr-sequential-writer w
-                           (fn [d w opts]
-                             (pr-sequential-writer w pr-writer "[" " " "]" opts [(.-e d) (.-a d) (.-v d) (.-tx d)]))
-                           "[" " " "]" opts (:eavt db))
+    ;  (pr-sequential-writer w
+    ;                        (fn [d w opts]
+    ;                          (pr-sequential-writer w pr-writer "[" " " "]" opts [(.-e d) (.-a d) (.-v d) (.-tx d)]))
+    ;                        "[" " " "]" opts)
      (-write w "}")))
 
 #?(:clj

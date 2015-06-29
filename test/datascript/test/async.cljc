@@ -8,22 +8,44 @@
    #?(:cljs [cljs.core.async :refer [<! put! chan]]
       :clj  [clojure.core.async :refer [<! put! chan go go-loop]])))
 
+(defn- distinct-consecutive [sequence]
+  (map first (partition-by identity sequence)))
+
+(defn slice
+  "When called with single key, returns iterator over set that contains all elements equal to the key.
+   When called with two keys (range), returns iterator for all X where key-from <= X <= key-to"
+  ([ss a] (slice ss a a))
+  ([ss a b]
+  (go
+   ;; do subseq from !a -> a, and a -> b -> !b; concat and dedup
+   ;; do overlaps (always <= or >=) since the glob matching needs it.
+   (-> (rsubseq ss >= a >= a)
+       (reverse)
+       (concat (subseq ss >= a <= b))
+       (distinct-consecutive)))))
+
+(def eavt (btset/btset-by dc/cmp-datoms-eavt))
+(def aevt (btset/btset-by dc/cmp-datoms-aevt))
+(def avet (btset/btset-by dc/cmp-datoms-avet))
+
 (defn empty-db
   ([]
     (dc/map->DB {
       :schema  nil
-      :eavt    (btset/btset-by dc/cmp-datoms-eavt)
-      :aevt    (btset/btset-by dc/cmp-datoms-aevt)
-      :avet    (btset/btset-by dc/cmp-datoms-avet)
+      :eavt    (fn [start end]
+                  (println "slice eavt " start end)
+                  (slice eavt start end))
+      :aevt    #(slice aevt %1 %2)
+      :avet    #(slice avet %1 %2)
       :max-eid 0
       :max-tx  0
       :rschema {}})))
 
 (defn with-datom [db & datom]
-  (-> db
-    (update-in [:eavt] btset/btset-conj (apply dc/datom datom) dc/cmp-datoms-eavt-quick)
-    (update-in [:aevt] btset/btset-conj (apply dc/datom datom) dc/cmp-datoms-aevt-quick)
-    (update-in [:avet] btset/btset-conj (apply dc/datom datom) dc/cmp-datoms-avet-quick)))
+  (set! eavt (conj eavt (apply dc/datom datom)))
+  (set! aevt (conj aevt (apply dc/datom datom)))
+  (set! avet (conj avet (apply dc/datom datom)))
+  db)
 
 (defn test-joins []
   (go
@@ -35,25 +57,27 @@
                  (with-datom 3 :name "Ivan")
                  (with-datom 3 :age 37)
                  (with-datom 4 :age 15))]
+      (println eavt)
       (println (<! (d/q '[:find ?e
                     :where [?e :name]] db))
              #{[1] [2] [3]})
-      (println (<! (d/q '[:find  ?e ?v
-                    :where [?e :name "Ivan"]
-                           [?e :age ?v]] db))
-             #{[1 15] [3 37]})
-      (println (<! (d/q '[:find  ?e1 ?e2
-                    :where [?e1 :name ?n]
-                           [?e2 :name ?n]] db))
-             #{[1 1] [2 2] [3 3] [1 3] [3 1]})
-      (println (<! (d/q '[:find  ?e ?e2 ?n
-                    :where [?e :name "Ivan"]
-                           [?e :age ?a]
-                           [?e2 :age ?a]
-                           [?e2 :name ?n]] db))
-             #{[1 1 "Ivan"]
-               [3 3 "Ivan"]
-               [3 2 "Petr"]}))))
+             )))
+      ; (println (<! (d/q '[:find  ?e ?v
+      ;               :where [?e :name "Ivan"]
+      ;                      [?e :age ?v]] db))
+      ;        #{[1 15] [3 37]})
+      ; (println (<! (d/q '[:find  ?e1 ?e2
+      ;               :where [?e1 :name ?n]
+      ;                      [?e2 :name ?n]] db))
+      ;        #{[1 1] [2 2] [3 3] [1 3] [3 1]})
+      ; (println (<! (d/q '[:find  ?e ?e2 ?n
+      ;               :where [?e :name "Ivan"]
+      ;                      [?e :age ?a]
+      ;                      [?e2 :age ?a]
+      ;                      [?e2 :name ?n]] db))
+      ;        #{[1 1 "Ivan"]
+      ;          [3 3 "Ivan"]
+      ;          [3 2 "Petr"]}))))
 
 (defn test-q-many []
   (go
@@ -237,8 +261,8 @@
 
 ;TODO: make function to run all the tests
 (test-joins)
-(test-q-many)
-(test-q-coll)
-(test-q-in)
-(test-bindings)
-(test-nested-bindings)
+; (test-q-many)
+; (test-q-coll)
+; (test-q-in)
+; (test-bindings)
+; (test-nested-bindings)
