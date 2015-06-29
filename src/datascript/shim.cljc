@@ -19,30 +19,47 @@
   (if (:ns env) then else))
 
 #?(:clj
-  (defmacro array [& args]
-    (if-cljs &env
-      (->
-        (list* 'js* (str "[" (str/join "," (repeat (count args) "~{}")) "]") args)
-        (vary-meta assoc :tag 'array))
-     `(clojure.core/into-array Object ~(vec args)))))
-
-#?(:clj
   (defmacro aget [arr i]
     (if-cljs &env
-     `(cljs.core/aget ~arr ~i)
+      (list 'js* "(~{}[~{}])" arr i)
      `(clojure.lang.RT/aget ~(vary-meta arr assoc :tag "[[Ljava.lang.Object;") (int ~i)))))
 
 #?(:clj
   (defmacro alength [arr]
     (if-cljs &env
-     `(cljs.core/alength ~arr)
+      (-> (list 'js* "~{}.length" arr)
+          (vary-meta assoc :tag 'number))
      `(clojure.lang.RT/alength ~(vary-meta arr assoc :tag "[[Ljava.lang.Object;")))))
 
 #?(:clj
   (defmacro aset [arr i v]
     (if-cljs &env
-     `(cljs.core/aset ~arr ~i ~v)
+      (list 'js* "(~{}[~{}] = ~{})" arr i v)
      `(clojure.lang.RT/aset ~(vary-meta arr assoc :tag "[[Ljava.lang.Object;") (int ~i) ~v))))
+
+#?(:clj
+  (defmacro array [& args]
+    (if-cljs &env
+      (->
+        (list* 'js* (str "[" (str/join "," (repeat (count args) "~{}")) "]") args)
+        (vary-meta assoc :tag 'array))
+      (let [len (count args)]
+        (if (zero? len)
+          'clojure.lang.RT/EMPTY_ARRAY
+         `(let [arr# (clojure.core/make-array java.lang.Object ~len)]
+            (doto ^{:tag "[[Ljava.lang.Object;"} arr#
+            ~@(map #(list 'aset % (nth args %)) (range len)))))))))
+
+#?(:clj
+  (defmacro acopy [from from-start from-end to to-start]
+    (if-cljs &env
+     `(let [l# (- ~from-end ~from-start)]
+        (dotimes [i# l#]
+          (aset ~to (+ i# ~to-start) (aget ~from (+ i# ~from-start)))))
+     `(let [l# (- ~from-end ~from-start)]
+        (when (pos? l#)
+          (System/arraycopy ~from ~from-start ~to ~to-start l#))))))
+      
 
 (defn aconcat [a b]
   #?(:cljs (.concat a b)
@@ -76,3 +93,11 @@
                 (instance? java.util.Map x)))))
 
 (def neg-number? (every-pred number? neg?))
+
+#?(:clj
+  (defmacro half [x]
+    `(unsigned-bit-shift-right ~x 1)))
+
+#?(:clj
+  (defmacro not== [x y]
+    `(not (== ~x ~y))))

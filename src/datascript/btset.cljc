@@ -22,11 +22,11 @@
         (7 << 16) | (53 << 8) | 11 = 472331
         0000 0111   0011 0101   0000 1011
 
-  Iter: set       :: Set this iterator belongs to
-             left      :: Current path
-             right     :: Right bound path (exclusive)
-             keys      :: Cached ref for keys array for a leaf
-             idx       :: Cached idx in keys array
+  Iter:     set       :: Set this iterator belongs to
+            left      :: Current path
+            right     :: Right bound path (exclusive)
+            keys      :: Cached ref for keys array for a leaf
+            idx       :: Cached idx in keys array
   Keys and idx are cached for fast iteration inside a leaf
 "
   :author "Nikita Prokopov"}
@@ -36,62 +36,58 @@
     [datascript.shim :as shim])
   #?(:clj  (:import [java.util Arrays])))
 
-(defn half ^long [x]
-  (unsigned-bit-shift-right x 1))
-
-(def ^:const min-len 64)
-(def ^:const max-len 128)
-(def ^:const avg-len (half (+ max-len min-len)))
+(def ^:const min-len 16)
+(def ^:const max-len 32)
+(def ^:const avg-len (shim/half (+ max-len min-len)))
 (def ^:const level-shift (->> (range 31 -1 -1)
                               (filter #(bit-test max-len %))
                               first
                               inc))
 (def ^:const path-mask (dec (bit-shift-left 1 level-shift)))
-(def ^:const empty-path 0)
-(def ^:dynamic *cmp*)
+(def ^:const ^long empty-path 0)
 
-(defn path-get ^long [path level]
+(defn path-get ^long [^long path ^long level]
   (bit-and path-mask
            (unsigned-bit-shift-right path level)))
 
-(defn path-set ^long [path level idx]
+(defn path-set ^long [^long path ^long level ^long idx]
   (bit-or path 
           (bit-shift-left idx level)))
 
-(defn eq [a b]
-  (== 0 (*cmp* a b)))
+(defn binary-search-l ^long [cmp arr ^long r k]
+  (loop [l 0
+         r (long r)]
+    (if (<= l r)
+      (let [m  (shim/half (+ l r))
+            mk (shim/aget arr m)]
+        (if (neg? (cmp mk k))
+          (recur (inc m) r)
+          (recur l (dec m))))
+      l)))
 
-(defn binary-search-l [arr l r k]
-  (if (<= l r)
-    (let [m   (half (+ l r))
-          mk  (shim/aget arr m)
-          cmp (*cmp* mk k)]
-      (if (neg? cmp)
-        (recur arr (inc m) r k)
-        (recur arr l (dec m) k)))
-    l))
 
-(defn binary-search-r [arr l r k]
-  (if (<= l r)
-    (let [m   (half (+ l r))
-          mk  (shim/aget arr m)
-          cmp (*cmp* mk k)]
-      (if (pos? cmp)
-        (recur arr l (dec m) k)
-        (recur arr (inc m) r k)))
-    l))
+(defn binary-search-r ^long [cmp arr ^long r k]
+  (loop [l 0
+         r (long r)]
+    (if (<= l r)
+      (let [m  (shim/half (+ l r))
+            mk (shim/aget arr m)]
+        (if (pos? (cmp mk k))
+          (recur l (dec m))
+          (recur (inc m) r)))
+      l)))
 
-(defn lookup-exact [arr key]
+(defn lookup-exact ^long [cmp arr key]
   (let [arr-l (shim/alength arr)
-        idx   (binary-search-l arr 0 (dec arr-l) key)]
+        idx   (binary-search-l cmp arr (dec arr-l) key)]
     (if (and (< idx arr-l)
-             (eq (shim/aget arr idx) key))
+             (== 0 (cmp (shim/aget arr idx) key)))
       idx
       -1)))
 
-(defn lookup-range [arr key]
+(defn lookup-range ^long [cmp arr key]
   (let [arr-l (shim/alength arr)
-        idx   (binary-search-l arr 0 (dec arr-l) key)]
+        idx   (binary-search-l cmp arr (dec arr-l) key)]
     (if (== idx arr-l)
       -1
       idx)))
@@ -102,18 +98,14 @@
   (shim/aget arr (dec (shim/alength arr))))
 
 (defn cut-n-splice [arr cut-from cut-to splice-from splice-to xs]
-  (let [arr-l   (shim/alength arr)
-        xs-l    (shim/alength xs)
-        l1      (- splice-from cut-from)
-        l2      (- cut-to splice-to)
-        l1xs    (+ l1 xs-l)
+  (let [xs-l (shim/alength xs)
+        l1   (- splice-from cut-from)
+        l2   (- cut-to splice-to)
+        l1xs (+ l1 xs-l)
         new-arr (shim/make-array (+ l1 xs-l l2))]
-    (dotimes [i l1]
-      (shim/aset new-arr i (shim/aget arr (+ cut-from i))))
-    (dotimes [i xs-l]
-      (shim/aset new-arr (+ i l1) (shim/aget xs i)))
-    (dotimes [i l2]
-      (shim/aset new-arr (+ i l1xs) (shim/aget arr (+ splice-to i))))
+    (shim/acopy arr cut-from splice-from new-arr 0)
+    (shim/acopy xs 0 xs-l new-arr l1)
+    (shim/acopy arr splice-to cut-to new-arr l1xs)
     new-arr))
 
 (defn cut
@@ -138,22 +130,23 @@
   (let [a1-l    (shim/alength a1)
         a2-l    (shim/alength a2)
         total-l (+ a1-l a2-l)
-        r1-l    (half total-l)
+        r1-l    (shim/half total-l)
         r2-l    (- total-l r1-l)
         r1      (shim/make-array r1-l)
         r2      (shim/make-array r2-l)]
-    (dotimes [i total-l]
-      (let [set-a (if (< i r1-l) r1 r2)
-            set-i (if (< i r1-l) i (- i r1-l))
-            get-a (if (< i a1-l) a1 a2)
-            get-i (if (< i a1-l) i (- i a1-l))
-            set-v (shim/aget get-a get-i)]
-        (shim/aset set-a set-i set-v)))
+    (if (<= a1-l r1-l)
+      (do
+        (shim/acopy a1 0             a1-l          r1 0)
+        (shim/acopy a2 0             (- r1-l a1-l) r1 a1-l)
+        (shim/acopy a2 (- r1-l a1-l) a2-l          r2 0))
+      (do
+        (shim/acopy a1 0    r1-l r1 0)
+        (shim/acopy a1 r1-l a1-l r2 0)
+        (shim/acopy a2 0    a2-l r2 (- a1-l r1-l))))
     (shim/array r1 r2)))
 
-(defn ^boolean eq-arr
-  [a1 a1-from a1-to
-   a2 a2-from a2-to cmp]
+(defn ^boolean eq-arr [cmp a1 a1-from a1-to
+                           a2 a2-from a2-to]
   (let [len (- a1-to a1-from)]
     (and
       (== len (- a2-to a2-from))
@@ -161,18 +154,14 @@
         (cond
           (== i len)
             true
-          (not (cmp (shim/aget a1 (+ i a1-from))
-                    (shim/aget a2 (+ i a2-from))))
+          (shim/not== 0 (cmp (shim/aget a1 (+ i a1-from))
+                             (shim/aget a2 (+ i a2-from))))
             false
           :else
             (recur (inc i)))))))
 
-(defn check-n-splice 
- [arr
-                                 from
-                                 to
-  new-arr]
-  (if (eq-arr arr from to new-arr 0 (shim/alength new-arr) eq)
+(defn check-n-splice [cmp arr from to new-arr]
+  (if (eq-arr cmp arr from to new-arr 0 (shim/alength new-arr))
     arr
     (splice arr from to new-arr)))
 
@@ -202,10 +191,10 @@
                 (conj! acc (cut arr pos (+ pos chunk-len)))
                 (recur (+ pos chunk-len)))
             :else
-              (let [piece-len (half rest)]
+              (let [piece-len (shim/half rest)]
                 (conj! acc (cut arr pos (+ pos piece-len)))
                 (recur (+ pos piece-len)))))))
-    (to-array (persistent! acc))))
+    (to-array (persistent! acc)))) ;; TODO avoid persistent?
 
 (defn- sorted-arr-distinct? [arr cmp]
   (let [al (shim/alength arr)]
@@ -231,7 +220,7 @@
              i   1
              p   (shim/aget arr 0)]
         (if (>= i al)
-          (into-array (persistent! acc))
+          (into-array (persistent! acc)) ;; TODO avoid persistent?
           (let [e (shim/aget arr i)]
             (if (== 0 (cmp e p))
               (recur acc (inc i) e)
@@ -269,9 +258,9 @@
   (node-len           [_])
   (node-merge         [_ next])
   (node-merge-n-split [_ next])
-  (node-lookup        [_ key])
-  (node-conj          [_ key])
-  (node-disj          [_ key root? left right]))
+  (node-lookup        [_ cmp key])
+  (node-conj          [_ cmp key])
+  (node-disj          [_ cmp key root? left right]))
 
 (defn rotate [node root? left right]
   (cond
@@ -320,42 +309,42 @@
       (return-array (Node. (shim/aget ks 0) (shim/aget ps 0))
                     (Node. (shim/aget ks 1) (shim/aget ps 1)))))
 
-  (node-lookup [_ key]
-    (let [idx (lookup-range keys key)]
+  (node-lookup [_ cmp key]
+    (let [idx (lookup-range cmp keys key)]
       (when-not (== -1 idx)
-        (node-lookup (shim/aget pointers idx) key))))
+        (node-lookup (shim/aget pointers idx) cmp key))))
   
-  (node-conj [_ key]
-    (let [idx   (binary-search-l keys 0 (- (shim/alength keys) 2) key)
-          nodes (node-conj (shim/aget pointers idx) key)]
+  (node-conj [_ cmp key]
+    (let [idx   (binary-search-l cmp keys (- (shim/alength keys) 2) key)
+          nodes (node-conj (shim/aget pointers idx) cmp key)]
       (when nodes
-        (let [new-keys     (check-n-splice keys     idx (inc idx) (shim/amap node-lim-key nodes))
-              new-pointers (splice         pointers idx (inc idx) nodes)]
+        (let [new-keys     (check-n-splice cmp keys     idx (inc idx) (shim/amap node-lim-key nodes))
+              new-pointers (splice             pointers idx (inc idx) nodes)]
           (if (<= (shim/alength new-pointers) max-len)
             ;; ok as is
             (shim/array (Node. new-keys new-pointers))
             ;; gotta split it up
-            (let [middle  (half (shim/alength new-pointers))]
+            (let [middle  (shim/half (shim/alength new-pointers))]
               (shim/array
                 (Node. (cut new-keys     0 middle)
                        (cut new-pointers 0 middle))
                 (Node. (cut new-keys     middle)
                        (cut new-pointers middle)))))))))
 
-  (node-disj [_ key root? left right]
-    (let [idx (lookup-range keys key)]
+  (node-disj [_ cmp key root? left right]
+    (let [idx (lookup-range cmp keys key)]
       (when-not (== -1 idx) ;; short-circuit, key not here
         (let [child       (shim/aget pointers idx)
               left-child  (when (>= (dec idx) 0)
                             (shim/aget pointers (dec idx)))
               right-child (when (< (inc idx) (shim/alength pointers))
                             (shim/aget pointers (inc idx)))
-              disjned     (node-disj child key false left-child right-child)]
+              disjned     (node-disj child cmp key false left-child right-child)]
           (when disjned     ;; short-circuit, key not here
             (let [left-idx     (if left-child  (dec idx) idx)
                   right-idx    (if right-child (+ 2 idx) (+ 1 idx))
-                  new-keys     (check-n-splice keys left-idx right-idx (shim/amap node-lim-key disjned))
-                  new-pointers (splice pointers left-idx right-idx disjned)]
+                  new-keys     (check-n-splice cmp keys     left-idx right-idx (shim/amap node-lim-key disjned))
+                  new-pointers (splice             pointers left-idx right-idx disjned)]
               (rotate (Node. new-keys new-pointers) root? left right))))))))
 
 (deftype Leaf [keys]
@@ -376,23 +365,23 @@
       (return-array (Leaf. (shim/aget ks 0))
                     (Leaf. (shim/aget ks 1)))))
   
-  (node-lookup [_ key]
-    (let [idx (lookup-exact keys key)]
+  (node-lookup [_ cmp key]
+    (let [idx (lookup-exact cmp keys key)]
       (when-not (== -1 idx)
         (shim/aget keys idx))))
 
-  (node-conj [_ key]
-    (let [idx    (binary-search-l keys 0 (dec (shim/alength keys)) key)
+  (node-conj [_ cmp key]
+    (let [idx    (binary-search-l cmp keys (dec (shim/alength keys)) key)
           keys-l (shim/alength keys)]
       (cond
         ;; element already here
         (and (< idx keys-l)
-             (eq key (shim/aget keys idx)))
+             (== 0 (cmp key (shim/aget keys idx))))
           nil
       
         ;; splitting
         (== keys-l max-len)
-          (let [middle (half (inc keys-l))]
+          (let [middle (shim/half (inc keys-l))]
             (if (> idx middle)
               ;; new key goes to the second half
               (shim/array
@@ -407,8 +396,8 @@
         :else
           (shim/array (Leaf. (splice keys idx idx (shim/array key)))))))
   
-  (node-disj [_ key root? left right]
-    (let [idx (lookup-exact keys key)]
+  (node-disj [_ cmp key root? left right]
+    (let [idx (lookup-exact cmp keys key)]
       (when-not (== -1 idx) ;; key is here
         (let [new-keys (splice keys idx (inc idx) (shim/array))]
           (rotate (Leaf. new-keys) root? left right))))))
@@ -435,7 +424,7 @@
     (-meta [_] meta)
 
     IEmptyableCollection
-    (-empty [_] (BTSet. (Leaf. (array)) 0 0 comparator meta uninitialized-hash))
+    (-empty [_] (BTSet. (Leaf. (shim/array)) 0 0 comparator meta uninitialized-hash))
 
     IEquiv
     (-equiv [this other]
@@ -455,17 +444,25 @@
 
     ILookup 
     (-lookup [_ k]
-      (binding [*cmp* comparator]
-        (node-lookup root k)))
+      (node-lookup root comparator k))
     (-lookup [_ k not-found]
-      (binding [*cmp* comparator]
-        (or (node-lookup root k) not-found)))
+      (or (node-lookup root comparator k) not-found))
 
     ISeqable
     (-seq [this] (btset-iter this))
 
+    IReduce
+    (-reduce [this f]
+      (if-let [i (btset-iter this)]
+        (-reduce i f)
+        (f)))
+    (-reduce [this f start]
+      (if-let [i (btset-iter this)]
+        (-reduce i f start)
+        start))
+             
     IReversible
-    (-rseq [this] (reverse (btset-iter this)))
+    (-rseq [this] (rseq (btset-iter this)))
 
     ICounted
     (-count [_] cnt)
@@ -486,11 +483,23 @@
     (withMeta [_ new-meta] (BTSet. root shift cnt comparator new-meta _hasheq))
     
     clojure.lang.Reversible
-    (rseq [this] (reverse (btset-iter this)))
+    (rseq [this] (rseq (btset-iter this)))
         
     clojure.lang.Seqable
     (seq [this] (btset-iter this))
 
+    clojure.lang.IReduce
+    (reduce [this f]
+      (if-let [i (btset-iter this)]
+        (.reduce ^clojure.lang.IReduce i f)
+        (f)))
+
+    clojure.lang.IReduceInit
+    (reduce [this f start]
+      (if-let [i (btset-iter this)]
+        (.reduce ^clojure.lang.IReduceInit i f start)
+        start))
+        
     clojure.lang.IPersistentCollection
     (empty [_] (BTSet. (Leaf. (shim/array)) 0 0 comparator meta uninitialized-hash))
     (cons  [this key] (btset-conj this key comparator))
@@ -507,8 +516,7 @@
     (disjoin  [this key] (btset-disj this key comparator))
     (contains [this key] (not (nil? (.get this key))))
     (get [_ key]
-      (binding [*cmp* comparator]
-        (node-lookup root key)))
+      (node-lookup root comparator key))
         
     clojure.lang.ILookup
     (valAt [this key] (.get this key))
@@ -556,52 +564,50 @@
       (.-keys ^Leaf node))))
 
 (defn btset-conj [^BTSet set key cmp]
-  (binding [*cmp* cmp]
-    (let [roots (node-conj (.-root set) key)]
-      (cond
-        ;; tree not changed
-        (nil? roots)
-          set
-       
-        ;; keeping single root
-        (== (shim/alength roots) 1)
-          (alter-btset set
-            (shim/aget roots 0)
-            (.-shift set)
-            (inc (.-cnt set)))
-       
-        ;; introducing new root
-        :else
-          (alter-btset set
-            (Node. (shim/amap node-lim-key roots) roots)
-            (+ (.-shift set) level-shift)
-            (inc (.-cnt set)))))))
+  (let [roots (node-conj (.-root set) cmp key)]
+    (cond
+      ;; tree not changed
+      (nil? roots)
+        set
+     
+      ;; keeping single root
+      (== (shim/alength roots) 1)
+        (alter-btset set
+          (shim/aget roots 0)
+          (.-shift set)
+          (inc (.-cnt set)))
+     
+      ;; introducing new root
+      :else
+        (alter-btset set
+          (Node. (shim/amap node-lim-key roots) roots)
+          (+ (.-shift set) level-shift)
+          (inc (.-cnt set))))))
 
 (defn btset-disj [^BTSet set key cmp]
-  (binding [*cmp* cmp]
-    (let [new-roots (node-disj (.-root set) key true nil nil)]
-      (if (nil? new-roots) ;; nothing changed, key wasn't in the set
-        set
-        (let [new-root (shim/aget new-roots 0)]
-          (if (and (instance? Node new-root)
-                   (== 1 (shim/alength (.-pointers ^Node new-root))))
-            
-            ;; root has one child, make him new root
-            (alter-btset set
-              (shim/aget (.-pointers ^Node new-root) 0)
-              (- (.-shift set) level-shift)
-              (dec (.-cnt set)))
-            
-            ;; keeping root level
-            (alter-btset set
-              new-root
-              (.-shift set)
-              (dec (.-cnt set)))))))))
+  (let [new-roots (node-disj (.-root set) cmp key true nil nil)]
+    (if (nil? new-roots) ;; nothing changed, key wasn't in the set
+      set
+      (let [new-root (shim/aget new-roots 0)]
+        (if (and (instance? Node new-root)
+                 (== 1 (shim/alength (.-pointers ^Node new-root))))
+          
+          ;; root has one child, make him new root
+          (alter-btset set
+            (shim/aget (.-pointers ^Node new-root) 0)
+            (- (.-shift set) level-shift)
+            (dec (.-cnt set)))
+          
+          ;; keeping root level
+          (alter-btset set
+            new-root
+            (.-shift set)
+            (dec (.-cnt set))))))))
 
 
 ;; iteration
 
-(defn -next-path [node path level]
+(defn -next-path ^long [node ^long path ^long level]
   (let [idx (path-get path level)]
     (if (pos? level)
       ;; inner node
@@ -625,12 +631,12 @@
 (defn next-path
   "Returns path representing next item after `path` in natural traversal order,
    or -1 if end of tree has been reached"
-  [^BTSet set path]
+  ^long [^BTSet set ^long path]
   (-next-path (.-root set) path (.-shift set)))
 
 (defn -rpath
   "Returns rightmost path possible starting from node and going deeper"
-  [node level]
+  ^long [node ^long level]
   (loop [node  node
          path  empty-path
          level level]
@@ -642,7 +648,7 @@
       ;; leaf
       (path-set path 0 (dec (shim/alength (.-keys ^Leaf node)))))))
 
-(defn -prev-path [node path level]
+(defn -prev-path ^long [node ^long path ^long level]
   (let [idx (path-get path level)]
     (if (pos? level)
       ;; inner node
@@ -669,12 +675,12 @@
 (defn prev-path
   "Returns path representing previous item before `path` in natural traversal order,
    or -1 if `path` was already beginning of a tree"
-  [^BTSet set path]
+  ^long [^BTSet set ^long path]
   (-prev-path (.-root set) path (.-shift set)))
 
 
 
-(declare iter riter iter-first iter-next iter-rseq iter-reduce)
+(declare iter riter iter-first iter-next iter-chunk iter-chunked-next iter-rseq iter-reduce)
 
 (defn btset-iter
   "Iterator that represents whole set"
@@ -684,18 +690,25 @@
           right  (inc (-rpath (.-root set) (.-shift set)))]
       (iter set left right))))
 
-(deftype Iter [set left right keys idx]
+(deftype Iter [set ^long left ^long right keys ^long idx]
   #?@(:cljs [
     ISeqable
     (-seq [this] (when keys this))
 
     ISeq
     (-first [this] (iter-first this))
-    (-rest [this] (or (iter-next this) ()))
+    (-rest [this]  (or (iter-next this) ()))
 
     INext
     (-next [this] (iter-next this))
 
+    IChunkedSeq
+    (-chunked-first [this] (iter-chunk this))
+    (-chunked-rest  [this] (or (-chunked-next this) ()))
+
+    IChunkedNext
+    (-chunked-next  [this] (iter-chunked-next this))
+             
     IReduce
     (-reduce [this f] (iter-reduce this f))
     (-reduce [this f start] (iter-reduce this f start))
@@ -711,6 +724,11 @@
     (first [this] (iter-first this))
     (next  [this] (iter-next this))
     (more  [this] (or (iter-next this) ()))
+        
+    clojure.lang.IChunkedSeq
+    (chunkedFirst [this] (iter-chunk this))
+    (chunkedNext  [this] (iter-chunked-next this))
+    (chunkedMore  [this] (or (.chunkedNext this) ()))
 
     clojure.lang.IReduce
     (reduce [this f] (iter-reduce this f))
@@ -725,7 +743,7 @@
     (iterator [this] (clojure.lang.SeqIterator. this))
   ]))
 
-(defn iter [set left right]
+(defn iter [set ^long left ^long right]
   (Iter. set left right (keys-for set left) (path-get left 0)))
 
 (defn iter-first [^Iter iter]
@@ -746,6 +764,28 @@
         (let [left (next-path set left)]
           (when (and (not= -1 left) (< left right))
             (datascript.btset/iter set left right)))))))
+
+(defn iter-chunk [^Iter iter]
+  (let [left  (.-left iter)
+        right (.-right iter)
+        keys  (.-keys iter)
+        idx   (.-idx iter)
+        end-idx (if (= (bit-or left path-mask)
+                       (bit-or right path-mask))
+                  (bit-and right path-mask)
+                  (shim/alength keys))]
+      (#?(:clj clojure.lang.ArrayChunk.
+          :cljs array-chunk) keys idx end-idx)))
+
+(defn iter-chunked-next [^Iter iter]
+  (let [set   (.-set iter)
+        left  (.-left iter)
+        right (.-right iter)
+        keys  (.-keys iter)
+        idx   (.-idx iter)]
+    (let [left (next-path set (+ left (- (shim/alength keys) idx 1)))]
+      (when (and (not= -1 left) (< left right))
+        (datascript.btset/iter set left right)))))
 
 (defn iter-rseq [^Iter iter]
   (let [set   (.-set iter)
@@ -781,7 +821,7 @@
                   (recur (inc left) keys (inc idx) new-acc)
                   new-acc)
                 (let [new-left (next-path set left)]
-                  (if (and (not= -1 new-left) (< new-left (.-right iter)))
+                  (if (and (shim/not== -1 new-left) (< new-left right))
                     (recur new-left (keys-for set new-left) (path-get new-left 0) new-acc)
                     new-acc)))))))))
 
@@ -789,7 +829,7 @@
 
 (declare riter-first riter-next riter-rseq)
 
-(deftype ReverseIter [set left right keys idx]
+(deftype ReverseIter [set ^long left ^long right keys ^long idx]
   #?@(:cljs [
     ISeqable
     (-seq [this] (when keys this))
@@ -826,7 +866,7 @@
     (iterator [this] (clojure.lang.SeqIterator. this))
   ]))
 
-(defn riter [set left right]
+(defn riter [set ^long left ^long right]
   (ReverseIter. set left right (keys-for set right) (path-get right 0)))
 
 (defn riter-first [^ReverseIter riter]
@@ -861,7 +901,7 @@
 
 ;; distance
 
-(defn -distance [node left right level]
+(defn -distance [node ^long left ^long right ^long level]
   (let [idx-l (path-get left level)
         idx-r (path-get right level)]
     (if (pos? level)
@@ -875,7 +915,7 @@
             (* res avg-len))))
       (- idx-r idx-l))))
 
-(defn distance [^BTSet set path-l path-r]
+(defn distance [^BTSet set ^long path-l ^long path-r]
   (cond
     (== path-l path-r) 0
     (== (inc path-l) path-r) 1
@@ -898,10 +938,10 @@
     (let [keys-l (node-len node)]
       (if (== 0 level)
         (let [keys (.-keys ^Leaf node)
-              idx  (binary-search-l keys 0 (dec keys-l) key)]
+              idx  (binary-search-l (.-comparator set) keys (dec keys-l) key)]
           (if (== keys-l idx) -1 (path-set path 0 idx)))
         (let [keys (.-keys ^Node node)
-              idx  (binary-search-l keys 0 (- keys-l 2) key)]
+              idx  (binary-search-l (.-comparator set) keys (- keys-l 2) key)]
           (recur (shim/aget (.-pointers ^Node node) idx)
                  (path-set path level idx)
                  (- level level-shift)))))))
@@ -917,10 +957,10 @@
     (let [keys-l (node-len node)]
       (if (== 0 level)
         (let [keys (.-keys ^Leaf node)
-              idx  (binary-search-r keys 0 (dec keys-l) key)]
+              idx  (binary-search-r (.-comparator set) keys (dec keys-l) key)]
           (path-set path 0 idx))
         (let [keys (.-keys ^Node node)
-              idx  (binary-search-r keys 0 (- keys-l 2) key)]
+              idx  (binary-search-r (.-comparator set) keys (- keys-l 2) key)]
           (recur (shim/aget (.-pointers ^Node node) idx)
                  (path-set path level idx)
                  (- level level-shift)))))))
@@ -937,8 +977,7 @@
    When called with two keys (range), returns iterator for all X where key-from <= X <= key-to"
   ([set key] (slice set key key))
   ([^BTSet set key-from key-to]
-    (binding [*cmp* (.-comparator set)]
-      (-slice set key-from key-to))))
+    (-slice set key-from key-to)))
 
 ;; public interface
 
@@ -956,7 +995,7 @@
                     (arr-map-inplace #(Node. (shim/amap node-lim-key %) %)))
                (+ shift level-shift))))))
 
-(defn -btset-from-seq [seq cmp]
+(defn -btset-from-seq [seq cmp] ;; TODO avoid array?
   (let [arr (-> seq into-array (shim/asort cmp) (sorted-arr-distinct cmp))]
     (-btset-from-sorted-arr arr cmp)))
 
