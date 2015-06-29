@@ -48,7 +48,7 @@
   (set! avet (conj avet (apply dc/datom datom)))
   db)
 
-(defn test [under-test correct-answer]
+(defn output-test [under-test correct-answer]
   (if (= under-test correct-answer)
     (println "PASSED!")
     (println "FAILED!" under-test correct-answer)))
@@ -63,18 +63,18 @@
                  (with-datom 3 :name "Ivan")
                  (with-datom 3 :age 37)
                  (with-datom 4 :age 15))]
-      (test (<! (d/q '[:find ?e
+      (output-test (<! (d/q '[:find ?e
                     :where [?e :name]] db))
              #{[1] [2] [3]})
-      (test (<! (d/q '[:find  ?e ?v
+      (output-test (<! (d/q '[:find  ?e ?v
                     :where [?e :name "Ivan"]
                            [?e :age ?v]] db))
              #{[1 15] [3 37]})
-      (test (<! (d/q '[:find  ?e1 ?e2
+      (output-test (<! (d/q '[:find  ?e1 ?e2
                     :where [?e1 :name ?n]
                            [?e2 :name ?n]] db))
              #{[1 1] [2 2] [3 3] [1 3] [3 1]})
-      (test (<! (d/q '[:find  ?e ?e2 ?n
+      (output-test (<! (d/q '[:find  ?e ?e2 ?n
                     :where [?e :name "Ivan"]
                            [?e :age ?a]
                            [?e2 :age ?a]
@@ -92,7 +92,7 @@
                (with-datom 2 :name "Petr")
                (with-datom 2 :aka  "porosenok")
                (with-datom 2 :aka  "pi"))]
-    (test (<! (d/q '[:find  ?n1 ?n2
+    (output-test (<! (d/q '[:find  ?n1 ?n2
                   :where [?e1 :aka ?x]
                          [?e2 :aka ?x]
                          [?e1 :name ?n1]
@@ -108,7 +108,7 @@
              [1 :age  19]
              [1 :aka  "dragon_killer_94"]
              [1 :aka  "-=autobot=-"] ] ]
-    (test (<! (d/q '[ :find  ?n ?a
+    (output-test (<! (d/q '[ :find  ?n ?a
                    :where [?e :aka "dragon_killer_94"]
                           [?e :name ?n]
                           [?e :age  ?a]] db))
@@ -117,10 +117,10 @@
   ; (testing "Query over long tuples"
     (let [db [ [1 :name "Ivan" 945 :db/add]
                [1 :age  39     999 :db/retract]] ]
-      (test (<! (d/q '[ :find  ?e ?v
+      (output-test (<! (d/q '[ :find  ?e ?v
                      :where [?e :name ?v]] db))
              #{[1 "Ivan"]})
-      (test (<! (d/q '[ :find  ?e ?a ?v ?t
+      (output-test (<! (d/q '[ :find  ?e ?a ?v ?t
                      :where [?e ?a ?v ?t :db/retract]] db))
              #{[1 :age 39 999]}))))
 
@@ -136,20 +136,20 @@
         query '{:find  [?e]
                 :in    [$ ?attr ?value]
                 :where [[?e ?attr ?value]]}]
-    (test (<! (d/q query db :name "Ivan"))
+    (output-test (<! (d/q query db :name "Ivan"))
            #{[1] [3]})
-    (test (<! (d/q query db :age 37))
+    (output-test (<! (d/q query db :age 37))
            #{[2] [3]})
 
     ; (testing "Named DB"
-      (test (<! (d/q '[:find  ?a ?v
+      (output-test (<! (d/q '[:find  ?a ?v
                     :in    $db ?e
                     :where [$db ?e ?a ?v]] db 1))
              #{[:name "Ivan"]
                [:age 15]})
 
     ; (testing "DB join with collection"
-      (test (<! (d/q '[:find  ?e ?email
+      (output-test (<! (d/q '[:find  ?e ?email
                     :in    $ $b
                     :where [?e :name ?n]
                            [$b ?n ?email]]
@@ -161,7 +161,7 @@
                [3 "ivan@mail.ru"]})
 
     ; (testing "Query without DB"
-      (test (<! (d/q '[:find ?a ?b
+      (output-test (<! (d/q '[:find ?a ?b
                     :in   ?a ?b]
                   10 20))
              #{[10 20]}))))
@@ -176,7 +176,7 @@
                (with-datom 3 :name  "Ivan")
                (with-datom 3 :age   37 ))]
     ; (testing "Relation binding"
-      (test (<! (d/q '[:find  ?e ?email
+      (output-test (<! (d/q '[:find  ?e ?email
                     :in    $ [[?n ?email]]
                     :where [?e :name ?n]]
                   db
@@ -187,7 +187,7 @@
                [3 "ivan@mail.ru"]})
 
     ; (testing "Tuple binding"
-      (test (<! (d/q '[:find  ?e
+      (output-test (<! (d/q '[:find  ?e
                     :in    $ [?name ?age]
                     :where [?e :name ?name]
                            [?e :age ?age]]
@@ -195,20 +195,20 @@
              #{[3]})
 
     ; (testing "Collection binding"
-      (test (<! (d/q '[:find  ?attr ?value
+      (output-test (<! (d/q '[:find  ?attr ?value
                     :in    $ ?e [?attr ...]
                     :where [?e ?attr ?value]]
                   db 1 [:name :age]))
              #{[:name "Ivan"] [:age 15]})
 
     ; (testing "Empty coll handling"
-      (test (<! (d/q '[:find ?id
+      (output-test (<! (d/q '[:find ?id
                     :in $ [?id ...]
                     :where [?id :age _]]
                [[1 :name "Ivan"]
                 [2 :name "Petr"]]))
              #{})
-      (test (<! (d/q '[:find ?id
+      (output-test (<! (d/q '[:find ?id
                     :in $ [[?id]]
                     :where [?id :age _]]
                [[1 :name "Ivan"]
@@ -216,11 +216,11 @@
              #{})
 
     ; (testing "Placeholders"
-      (test (<! (d/q '[:find ?x ?z
+      (output-test (<! (d/q '[:find ?x ?z
                     :in [?x _ ?z]]
                   [:x :y :z]))
              #{[:x :z]})
-      (test (<! (d/q '[:find ?x ?z
+      (output-test (<! (d/q '[:find ?x ?z
                     :in [[?x _ ?z]]]
                   [[:x :y :z] [:a :b :c]]))
              #{[:x :z] [:a :c]})
@@ -237,13 +237,13 @@
 
 (defn test-nested-bindings []
   (go
-  (test (<! (d/q '[:find  ?k ?v
+  (output-test (<! (d/q '[:find  ?k ?v
                 :in    [[?k ?v] ...]
                 :where [(> ?v 1)]]
               {:a 1, :b 2, :c 3}))
          #{[:b 2] [:c 3]})
 
-  (test (<! (d/q '[:find  ?k ?min ?max
+  (output-test (<! (d/q '[:find  ?k ?min ?max
               :in    [[?k ?v] ...] ?minmax
               :where [(?minmax ?v) [?min ?max]]
                      [(> ?max ?min)]]
@@ -253,7 +253,7 @@
             #(vector (reduce min %) (reduce max %))))
        #{[:a 1 4] [:b 5 7]})
 
-  (test (<! (d/q '[:find  ?k ?x
+  (output-test (<! (d/q '[:find  ?k ?x
                 :in    [[?k [?min ?max]] ...] ?range
                 :where [(?range ?min ?max) [?x ...]]
                        [(even? ?x)]]
