@@ -4,9 +4,11 @@
    [datascript :as d]
    [datascript.core :as dc]
    [datascript.test.core :as tdc]
-   [datascript.async-btset :as btset]
    #?(:cljs [cljs.core.async :refer [<! put! chan]]
       :clj  [clojure.core.async :refer [<! put! chan go go-loop]])))
+
+(defn btset-by [cmp & keys]
+  (apply sorted-set-by cmp keys))
 
 (defn- distinct-consecutive [sequence]
   (map first (partition-by identity sequence)))
@@ -24,15 +26,15 @@
        (concat (subseq ss >= a <= b))
        (distinct-consecutive)))))
 
-(def eavt (btset/btset-by dc/cmp-datoms-eavt))
-(def aevt (btset/btset-by dc/cmp-datoms-aevt))
-(def avet (btset/btset-by dc/cmp-datoms-avet))
+(def eavt (btset-by dc/cmp-datoms-eavt))
+(def aevt (btset-by dc/cmp-datoms-aevt))
+(def avet (btset-by dc/cmp-datoms-avet))
 
 (defn empty-db
   ([]
-    (set! eavt (btset/btset-by dc/cmp-datoms-eavt))
-    (set! aevt (btset/btset-by dc/cmp-datoms-aevt))
-    (set! avet (btset/btset-by dc/cmp-datoms-avet))
+    (set! eavt (btset-by dc/cmp-datoms-eavt))
+    (set! aevt (btset-by dc/cmp-datoms-aevt))
+    (set! avet (btset-by dc/cmp-datoms-avet))
     (dc/map->DB {
       :schema  nil
       :eavt    #(slice eavt %1 %2)
