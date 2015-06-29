@@ -264,9 +264,10 @@
            [:b 2]})))
 
 ;TODO: make function to run all the tests
-(test-joins)
-(test-q-many)
-(test-q-coll)
-(test-q-in)
-(test-bindings)
-(test-nested-bindings)
+(go
+  (<! (test-joins))
+  (<! (test-q-many))
+  (<! (test-q-coll))
+  (<! (test-q-in))
+  (<! (test-bindings))
+  (<! (test-nested-bindings)))
