@@ -19,7 +19,7 @@
   ([ss a] (slice ss a a))
   ([ss a b]
     (go
-      (ss a b))))
+      (<! (ss a b)))))
 
 ;; constrain these versions to a single key, since protocol uses 2nd arg, and we ignore it.
 (defn btset-conj [set key _] (conj set key))

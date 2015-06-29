@@ -32,9 +32,7 @@
   ([]
     (dc/map->DB {
       :schema  nil
-      :eavt    (fn [start end]
-                  (println "slice eavt " start end)
-                  (slice eavt start end))
+      :eavt    #(slice eavt %1 %2)
       :aevt    #(slice aevt %1 %2)
       :avet    #(slice avet %1 %2)
       :max-eid 0
@@ -57,27 +55,25 @@
                  (with-datom 3 :name "Ivan")
                  (with-datom 3 :age 37)
                  (with-datom 4 :age 15))]
-      (println eavt)
       (println (<! (d/q '[:find ?e
                     :where [?e :name]] db))
              #{[1] [2] [3]})
-             )))
-      ; (println (<! (d/q '[:find  ?e ?v
-      ;               :where [?e :name "Ivan"]
-      ;                      [?e :age ?v]] db))
-      ;        #{[1 15] [3 37]})
-      ; (println (<! (d/q '[:find  ?e1 ?e2
-      ;               :where [?e1 :name ?n]
-      ;                      [?e2 :name ?n]] db))
-      ;        #{[1 1] [2 2] [3 3] [1 3] [3 1]})
-      ; (println (<! (d/q '[:find  ?e ?e2 ?n
-      ;               :where [?e :name "Ivan"]
-      ;                      [?e :age ?a]
-      ;                      [?e2 :age ?a]
-      ;                      [?e2 :name ?n]] db))
-      ;        #{[1 1 "Ivan"]
-      ;          [3 3 "Ivan"]
-      ;          [3 2 "Petr"]}))))
+      (println (<! (d/q '[:find  ?e ?v
+                    :where [?e :name "Ivan"]
+                           [?e :age ?v]] db))
+             #{[1 15] [3 37]})
+      (println (<! (d/q '[:find  ?e1 ?e2
+                    :where [?e1 :name ?n]
+                           [?e2 :name ?n]] db))
+             #{[1 1] [2 2] [3 3] [1 3] [3 1]})
+      (println (<! (d/q '[:find  ?e ?e2 ?n
+                    :where [?e :name "Ivan"]
+                           [?e :age ?a]
+                           [?e2 :age ?a]
+                           [?e2 :name ?n]] db))
+             #{[1 1 "Ivan"]
+               [3 3 "Ivan"]
+               [3 2 "Petr"]}))))
 
 (defn test-q-many []
   (go
@@ -261,8 +257,8 @@
 
 ;TODO: make function to run all the tests
 (test-joins)
-; (test-q-many)
-; (test-q-coll)
-; (test-q-in)
-; (test-bindings)
-; (test-nested-bindings)
+(test-q-many)
+(test-q-coll)
+(test-q-in)
+(test-bindings)
+(test-nested-bindings)
