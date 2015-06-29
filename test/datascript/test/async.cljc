@@ -30,6 +30,9 @@
 
 (defn empty-db
   ([]
+    (set! eavt (btset/btset-by dc/cmp-datoms-eavt))
+    (set! aevt (btset/btset-by dc/cmp-datoms-aevt))
+    (set! avet (btset/btset-by dc/cmp-datoms-avet))
     (dc/map->DB {
       :schema  nil
       :eavt    #(slice eavt %1 %2)
