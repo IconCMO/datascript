@@ -35,20 +35,13 @@
     (set! eavt (btset-by dc/cmp-datoms-eavt))
     (set! aevt (btset-by dc/cmp-datoms-aevt))
     (set! avet (btset-by dc/cmp-datoms-avet))
-    (dc/map->DB {
-      :schema  nil
-      :eavt    (fn
-                  ([a] (slice eavt a a))
-                  ([a b] (slice eavt a b)))
-      :aevt    (fn
-                  ([a] (slice aevt a a))
-                  ([a b] (slice aevt a b)))
-      :avet    (fn
-                  ([a] (slice avet a a))
-                  ([a b] (slice avet a b)))
-      :max-eid 0
-      :max-tx  0
-      :rschema {}})))
+    (d/set-indexes
+      (fn
+        ([a] (slice eavt a a))
+        ([a b] (slice eavt a b)))
+      (fn
+        ([a] (slice avet a a))
+        ([a b] (slice avet a b))))))
 
 (defn with-datom [db & datom]
   (set! eavt (conj eavt (apply dc/datom datom)))

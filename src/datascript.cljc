@@ -228,3 +228,14 @@
      :cljs (-> (subs (str uuid) 0 8)
                (js/parseInt 16)
                (* 1000))))
+
+(defn set-indexes
+  "Take in two functions for the eavt and aevt indexes, and return a DB record."
+  [eavt avet] (dc/map->DB {
+    :schema  nil
+    :eavt    eavt
+    :aevt    nil ; not yet used
+    :avet    avet
+    :max-eid 0
+    :max-tx  0
+    :rschema {}}))
