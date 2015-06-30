@@ -130,4 +130,4 @@
   (d/squuid-time-millis (cljs.core/uuid uuid)))
 
 (defn ^:export set_indexes [eavt avet]
-  (dc/set-indexes eavt avet))
+  (d/set-indexes eavt avet))
