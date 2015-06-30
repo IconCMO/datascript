@@ -267,9 +267,15 @@
 
 ;TODO: make function to run all the tests
 (go
+  (println "************ test-joins")
   (<! (test-joins))
+  (println "************ test-q-many")
   (<! (test-q-many))
+  (println "************ test-q-coll")
   (<! (test-q-coll))
+  (println "************ test-q-in")
   (<! (test-q-in))
+  (println "************ test-bindings")
   (<! (test-bindings))
+  (println "************ test-nested-bindings")
   (<! (test-nested-bindings)))
