@@ -52,7 +52,7 @@
 
 (defn output-test [under-test correct-answer]
   (if (= under-test correct-answer)
-    (println "PASSED!")
+    (println "PASSED!" correct-answer)
     (println "FAILED!" under-test correct-answer)))
 
 (defn test-joins []
