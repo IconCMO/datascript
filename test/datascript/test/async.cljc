@@ -37,9 +37,15 @@
     (set! avet (btset-by dc/cmp-datoms-avet))
     (dc/map->DB {
       :schema  nil
-      :eavt    #(slice eavt %1 %2)
-      :aevt    #(slice aevt %1 %2)
-      :avet    #(slice avet %1 %2)
+      :eavt    (fn
+                  ([a] (slice eavt a a))
+                  ([a b] (slice eavt a b)))
+      :aevt    (fn
+                  ([a] (slice aevt a a))
+                  ([a b] (slice aevt a b)))
+      :avet    (fn
+                  ([a] (slice avet a a))
+                  ([a b] (slice avet a b)))
       :max-eid 0
       :max-tx  0
       :rschema {}})))

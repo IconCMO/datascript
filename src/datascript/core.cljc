@@ -7,7 +7,7 @@
        :clj  [[clojure.core.async :as a :refer [<! go go-loop chan]]]) ;; don't really use core.async in the :clj version, but need this here so everything compiles (since the macros come from the :clj version)
     clojure.walk
     [datascript.shim :as shim]
-    [datascript.async-btset :as btset]))
+    [datascript.btset :as btset]))
 
 ;; ----------------------------------------------------------------------------
 
@@ -405,10 +405,10 @@
                          (<! (eavt (Datom. e nil nil nil nil)))         ;; e _ _ _
                          (->> (<! (avet (Datom. nil a v nil nil)))      ;; _ a v tx
                               (filter (fn [^Datom d] (= tx (.-tx d)))))
-                         (<! (btset/slice avet (Datom. nil a v nil nil)))           ;; _ a v _
+                         (<! (avet (Datom. nil a v nil nil)))           ;; _ a v _
                          (->> (<! (avet (Datom. nil a nil nil nil)))    ;; _ a _ tx
                               (filter (fn [^Datom d] (= tx (.-tx d)))))
-                         (<! (btset/slice avet (Datom. nil a nil nil nil)))         ;; _ a _ _
+                         (<! (avet (Datom. nil a nil nil nil)))         ;; _ a _ _
                          (filter (fn [^Datom d] (and (= v (.-v d))
                                                      (= tx (.-tx d)))) eavt)   ;; _ _ v tx
                          (filter (fn [^Datom d] (= v (.-v d))) eavt)           ;; _ _ v _
