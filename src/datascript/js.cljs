@@ -1,10 +1,12 @@
 (ns datascript.js
+  (:require-macros [cljs.core.async.macros :refer [go go-loop]])
   (:refer-clojure :exclude [filter])
   (:require
     [datascript :as d]
     [datascript.core :as dc]
     [clojure.walk :as walk]
-    [cljs.reader]))
+    [cljs.reader]
+    [cljs.core.async :refer [<! put! chan]]))
 
 ;; Conversions
 
@@ -67,10 +69,11 @@
 (defn ^:export init_db [datoms & [schema]]
   (d/init-db (map js->Datom datoms) (schema->clj schema)))
 
-(defn ^:export q [query & sources]
+(defn ^:export q [callback query & sources]
+  (go
   (let [query   (cljs.reader/read-string query)
-        results (apply d/q query sources)]
-    (clj->js results)))
+        results (<! (apply d/q query sources))]
+    (callback nil (clj->js results)))))
 
 (defn ^:export pull [db pattern eid]
   (let [pattern (cljs.reader/read-string pattern)
