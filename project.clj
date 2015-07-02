@@ -33,6 +33,8 @@
           :elide-asserts true
           :output-wrapper false
           :warnings      {:single-segment-namespace false}
+          :hashbang      false
+          :target        :nodejs
         }
         :notify-command ["release-js/wrap_bare.sh"]}
   ]}
