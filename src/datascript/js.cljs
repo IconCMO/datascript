@@ -132,5 +132,30 @@
 (defn ^:export squuid_time_millis [uuid]
   (d/squuid-time-millis (cljs.core/uuid uuid)))
 
+(defn- search-eavt
+  ([eavt a] (search-eavt eavt a a))
+  ([eavt a b]
+    (let [eavt-chan (chan)]
+      (eavt a b (fn [result]
+                    (let [result1 (js->clj result)
+                          result2 (map #(apply dc/datom %) result1)]
+                    (put! eavt-chan result2))))
+      eavt-chan)))
+
+(defn- search-avet
+  ([avet a] (search-avet avet a a))
+  ([avet a b]
+    (let [avet-chan (chan)]
+      (avet a b (fn [result]
+                    (let [result1 (js->clj result)
+                          result2 (map #(apply dc/datom %) result1)]
+                    (put! avet-chan result2))))
+      avet-chan)))
+
+
 (defn ^:export set_indexes [eavt avet]
-  (d/set-indexes eavt avet))
+  (d/set-indexes
+    (partial search-eavt eavt)
+    (partial search-avet avet)))
+
+(set! *main-cli-fn* #())
