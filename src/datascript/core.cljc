@@ -1,10 +1,10 @@
 (ns datascript.core
   #?(:cljs (:require-macros [datascript.core :refer [case-tree combine-cmp raise defrecord-updatable]]
-                            [cljs.core.async.macros :refer [go go-loop]]))
+                            [cljs.core.async.macros :refer [go]]))
   (:require
    #?@(:cljs [[goog.array :as garray]
               [cljs.core.async :refer [<! chan]]]
-       :clj  [[clojure.core.async :as a :refer [<! go go-loop chan]]]) ;; don't really use core.async in the :clj version, but need this here so everything compiles (since the macros come from the :clj version)
+       :clj  [[clojure.core.async :as a :refer [<! go chan]]]) ;; don't really use core.async in the :clj version, but need this here so everything compiles (since the macros come from the :clj version)
     clojure.walk
     [datascript.shim :as shim]
     [datascript.btset :as btset]))
@@ -476,8 +476,7 @@
 
   ISearch
   (-search [db pattern]
-    (go
-           (filter (.-pred db) (-search (.-unfiltered-db db) pattern))))
+           (filter (.-pred db) (-search (.-unfiltered-db db) pattern)))
 
   IIndexAccess
   (-datoms [db index cs]
@@ -778,12 +777,11 @@
         (update-in [:avet] btset/btset-disj removing cmp-datoms-avet-quick)))))
 
 (defn- transact-report [report datom]
-  (go
   (let [old-db (:db-after report)
-        new-db (<! (with-datom old-db datom))]
+        new-db (with-datom old-db datom)]
   (-> report
       (conj [:db-after new-db])
-      (update-in [:tx-data] conj datom)))))
+      (update-in [:tx-data] conj datom))))
 
 (defn #?@(:clj  [^Boolean reverse-ref?]
           :cljs [^boolean reverse-ref?]) [attr]
@@ -879,29 +877,26 @@
 (defn- transact-add [report [_ e a v :as ent]]
   (validate-attr a ent)
   (validate-val  v ent)
-  (go
   (let [tx    (current-tx report)
         db    (:db-after report)
         e     (entid-strict db e)
         v     (if (ref? db a) (entid-strict db v) v)
         datom (Datom. e a v tx true)]
     (if (multival? db a)
-      (if (empty? (<! (-search db [e a v])))
-        (<! (transact-report report datom))
+      (if (empty? (-search db [e a v]))
+        (transact-report report datom)
         report)
-      (if-let [^Datom old-datom (first (<! (-search db [e a])))]
+      (if-let [^Datom old-datom (first (-search db [e a]))]
         (if (= (.-v old-datom) v)
           report
           (-> report
             (transact-report (Datom. e a (.-v old-datom) tx false))
-            (<!)
-            (transact-report datom)
-            (<!)))
-        (<! (transact-report report datom)))))))
+            (transact-report datom)))
+            (transact-report report datom)))))
 
 (defn- transact-retract-datom [report ^Datom d]
   (let [tx (current-tx report)]
-    (<! (transact-report report (Datom. (.-e d) (.-a d) (.-v d) tx false)))))
+    (transact-report report (Datom. (.-e d) (.-a d) (.-v d) tx false))))
 
 (defn- retract-components [db datoms]
   (into #{} (comp
@@ -912,8 +907,6 @@
   (when-not (or (nil? es) (sequential? es))
     (raise "Bad transaction data " es ", expected sequential collection"
            {:error :transact/syntax, :tx-data es}))
-  (go-loop [report report ; go-loop here to provide a foundation for the recur calls
-            es     es]
   (let [[entity & entities] es
         db (:db-after report)]
     (cond
@@ -954,15 +947,15 @@
                     nv (if (ref? db a) (entid-strict db nv) nv)
                     _ (validate-val ov entity)
                     _ (validate-val nv entity)
-                    datoms (<! (-search db [e a]))]
+                    datoms (-search db [e a])]
                 (if (multival? db a)
                   (if (some (fn [^Datom d] (= (.-v d) ov)) datoms)
-                    (recur (<! (transact-add report [:db/add e a nv])) entities)
+                    (recur (transact-add report [:db/add e a nv]) entities)
                     (raise ":db.fn/cas failed on datom [" e " " a " " (map :v datoms) "], expected " ov
                            {:error :transact/cas, :old datoms, :expected ov, :new nv}))
                   (let [v (:v (first datoms))]
                     (if (= v ov)
-                      (recur (<! (transact-add report [:db/add e a nv])) entities)
+                      (recur (transact-add report [:db/add e a nv]) entities)
                       (raise ":db.fn/cas failed on datom [" e " " a " " v "], expected " ov
                              {:error :transact/cas, :old (first datoms), :expected ov, :new nv })))))
 
@@ -983,28 +976,28 @@
                 (recur (allocate-eid report v (next-eid db)) es))
 
             (= op :db/add)
-              (recur (<! (transact-add report entity)) entities)
+              (recur (transact-add report entity) entities)
 
             (= op :db/retract)
               (let [e (entid-strict db e)
                     v (if (ref? db a) (entid-strict db v) v)]
                 (validate-attr a entity)
                 (validate-val v entity)
-                (if-let [old-datom (first (<! (-search db [e a v])))]
+                (if-let [old-datom (first (-search db [e a v]))]
                   (recur (transact-retract-datom report old-datom) entities)
                   (recur report entities)))
 
             (= op :db.fn/retractAttribute)
               (let [e (entid-strict db e)]
                 (validate-attr a entity)
-                (let [datoms (<! (-search db [e a]))]
+                (let [datoms (-search db [e a])]
                   (recur (reduce transact-retract-datom report datoms)
                          (concat (retract-components db datoms) entities))))
 
             (= op :db.fn/retractEntity)
               (let [e (entid-strict db e)
-                    e-datoms (<! (-search db [e]))
-                    v-datoms (mapcat (fn [a] (go (<! (-search db [nil a e])))) (-attrs-by db :db.type/ref))]
+                    e-datoms (-search db [e])
+                    v-datoms (mapcat (fn [a] (-search db [nil a e])) (-attrs-by db :db.type/ref))]
                 (recur (reduce transact-retract-datom report (concat e-datoms v-datoms))
                        (concat (retract-components db e-datoms) entities)))
 
@@ -1014,4 +1007,4 @@
      :else
        (raise "Bad entity type at " entity ", expected map or vector"
               {:error :transact/syntax, :tx-data entity})
-     ))))
+     )))

@@ -48,19 +48,17 @@
 (defn with
   ([db tx-data] (with db tx-data nil))
   ([db tx-data tx-meta]
-    (go
     (if (is-filtered db)
       (throw (ex-info "Filtered DB cannot be modified" {:error :transaction/filtered}))
-      (<! (dc/transact-tx-data (dc/map->TxReport
+      (dc/transact-tx-data (dc/map->TxReport
                              { :db-before db
                                :db-after  db
                                :tx-data   []
                                :tempids   {}
-                               :tx-meta   tx-meta}) tx-data))))))
+                               :tx-meta   tx-meta}) tx-data))))
 
 (defn db-with [db tx-data]
-  (go
-  (:db-after (<! (with db tx-data)))))
+  (:db-after (with db tx-data)))
 
 (defn datoms
   ([db index] (dc/-datoms db index []))
