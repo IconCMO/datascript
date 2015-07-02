@@ -765,18 +765,17 @@
 
 (defn- with-datom [db ^Datom datom]
   (validate-datom db datom)
-  (go
   (if (.-added datom)
     (-> db
       (update-in [:eavt] btset/btset-conj datom cmp-datoms-eavt-quick)
       (update-in [:aevt] btset/btset-conj datom cmp-datoms-aevt-quick)
       (update-in [:avet] btset/btset-conj datom cmp-datoms-avet-quick)
       (advance-max-eid (.-e datom)))
-    (let [removing (first (<! (-search db [(.-e datom) (.-a datom) (.-v datom)])))]
+    (let [removing (first (-search db [(.-e datom) (.-a datom) (.-v datom)]))]
       (-> db
         (update-in [:eavt] btset/btset-disj removing cmp-datoms-eavt-quick)
         (update-in [:aevt] btset/btset-disj removing cmp-datoms-aevt-quick)
-        (update-in [:avet] btset/btset-disj removing cmp-datoms-avet-quick))))))
+        (update-in [:avet] btset/btset-disj removing cmp-datoms-avet-quick)))))
 
 (defn- transact-report [report datom]
   (go
