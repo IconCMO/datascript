@@ -1,6 +1,6 @@
 {
   "name": "datascript-async",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "An implementation of the datalog query language with user-provided indexes.",
   "homepage": "https://github.com/IconCMO/datascript",
   "author": "Icon Systems, Inc.",
@@ -38,9 +38,6 @@
     "node": ">=0.8.22"
   },
   "dependencies": {},
-  "scripts": {
-    "test": "lein cljsbuild test"
-  },
   "files": [
     "datascript.js"
   ]
