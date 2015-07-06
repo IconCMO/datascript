@@ -264,6 +264,15 @@
          #{[:a 2] [:a 4] [:a 6]
            [:b 2]})))
 
+(defn test-string-entity-ids []
+  (go
+    (let [db (-> (empty-db)
+                 (with-datom "1" "last_name" "benson"))]
+      (output-test (<! (d/q '[:find ?e
+                    :where [?e "last_name" "benson"]
+                           [?e "last_name" ?last_name]] db))
+             #{["1"]}))))
+
 ;TODO: make function to run all the tests
 (go
   (println "************ test-joins")
@@ -277,4 +286,6 @@
   (println "************ test-bindings")
   (<! (test-bindings))
   (println "************ test-nested-bindings")
-  (<! (test-nested-bindings)))
+  (<! (test-nested-bindings))
+  (println "************ test-string-entity-ids")
+  (<! (test-string-entity-ids)))

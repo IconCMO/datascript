@@ -663,6 +663,7 @@
 
 (defn entid [db eid]
   (cond
+    (string? eid) eid
     (number? eid) eid
     (sequential? eid)
       (cond
