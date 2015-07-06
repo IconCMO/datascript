@@ -1,16 +1,70 @@
-# DataScript
+# DataScript-Async
 
-An immutable in-memory database and Datalog query engine for JS engines.
+Forked the query language from [Datascript](https://github.com/tonsky/datascript), and changed to only utilize external indexes in an asynchronous manner.
 
-DataScript is meant to run inside the browser. It is cheap to create, quick to query and ephemeral. You create a database on page load, put some data in it, track changes, do queries and forget about it when the user closes the page.
+# To-Do
 
-DataScript databases are immutable and based on persistent data structures. In fact, they’re more like data structures than databases (think Hashmap). Unlike querying a real SQL DB, when you query DataScript, it all comes down to a Hashmap lookup. Or series of lookups. Or array iteration. There’s no particular overhead to it. You put a little data in it, it’s fast. You put in a lot of data, well, at least it has indexes. That should do better than you filtering an array by hand anyway. The thing is really lightweight.
+- More documentation.
+- More examples.
+- More tests.
 
-The intention with DataScript is to be a basic building block in client-side applications that needs to track a lot of state during their lifetime. There’s a lot of benefits:
+# Usage
 
-- Central, uniform approach to manage all application state. Clients working with state become decoupled and independent: rendering, server sync, undo/redo do not interfere with each other.
-- Immutability simplifies things even in a single-threaded browser environment. Keep track of app state evolution, rewind to any point in time, always render consistent state, sync in background without locking anybody.
-- Datalog query engine to answer non-trivial questions about current app state.
-- Structured format to track data coming in and out of DB. Datalog queries can be run against it too.
+For instance, say you have a PouchDB database with two views, one called `eav/eav` and one called `ave/ave`. These views would have array keys, such as [entity,attribute,value] and [attribute,value,entity], respectively, and both (for ease in our example) would have values of [entity,attribute,value]. (Another way of thinking of these triples is [id,label,value].)
 
-For more info, check out [project page](https://github.com/tonsky/datascript)
+Then, you could query the database as follows:
+
+```javascript
+var datascript = require( "dataScript-async" );
+var PouchDB = require( "pouchdb" );
+var db = new PouchDB( "datascript" );
+
+var searchPouchIndex = function (db, index) {
+  return function (startkey, endkey, index_callback) {
+    var view = index + "/" + index;
+    if (index === "eav") {
+      startkey = [startkey.e, startkey.a, startkey.v];
+      endkey = [endkey.e, endkey.a, endkey.v];
+    } else if (index === "ave") {
+      startkey = [startkey.a, startkey.v, startkey.e];
+      endkey = [endkey.a, endkey.v, endkey.e];
+    }
+    endkey = endkey.map(function (el) {
+      if (el === null) {
+        return {};
+      }
+      return el;
+    });
+    return db.query(view, {
+      startkey: startkey,
+      endkey: endkey
+    }).then(function (data) {
+      var result = data.rows.map(function (el) {
+        return el.value;
+      });
+      index_callback(result);
+    }).catch(function (error) {
+      console.error("An error occured.", error);
+    });
+  };
+};
+
+db = datascript.set_indexes(searchPouchIndex(self, "eav"), searchPouchIndex(self, "ave"));
+
+datascript.q(callback, '[:find ?id :in :where [?id "last_name" "benson"]]', function( data ) {
+  console.log( "Query results: ", data );
+}, db );
+
+```
+
+In fact, as long as you can provide functions to search the "eav" and "ave" indexes on any dataset, returning "eav" triples, you can use Dataquery to query those indexes. This should include in-memory indexes (though I'd suggest using [Datascript](https://github.com/tonsky/datascript) as it has been optimized for that use-case), IndexedDB, or pretty much any persistent store that would allow you to define indexes as necessary.
+
+# Installation
+
+```
+npm install --save dataScript-async
+```
+
+# Status
+
+Quite alpha. Contributions/suggestions/constructive critique very welcome!

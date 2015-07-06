@@ -1,13 +1,12 @@
 {
-  "name": "datascript",
-  "version": "0.11.5",
-  "description": "Immutable in-memory triplestore with Datalog queries",
-  "homepage": "https://github.com/tonsky/datascript",
-  "author": "Nikita Prokopov (https://github.com/tonsky)",
+  "name": "datascript-async",
+  "version": "0.1.0",
+  "description": "An implementation of the datalog query language with user-provided indexes.",
+  "homepage": "https://github.com/IconCMO/datascript",
+  "author": "Icon Systems, Inc.",
   "keywords": [
     "data",
     "database",
-    "triplestore",
     "datalog",
     "persistent",
     "immutable",
@@ -24,23 +23,18 @@
     "Kevin Lynagh (https://github.com/lynaghk)",
     "Bobby Calderwood (https://github.com/bobby)"
   ],
-  "bugs": {
-    "url": "https://github.com/tonsky/datascript/issues"
-  },
-  "licenses": [
-    {
-      "type": "EPL",
-      "url": "https://github.com/tonsky/datascript/blob/master/LICENSE"
-    }
-  ],
+  "license": "Eclipse",
   "main": "./datascript.js",
   "repository": {
     "type": "git",
-    "url": "git://github.com/tonsky/datascript.git"
+    "url": "https://github.com/IconCMO/datascript"
   },
   "engines": {
       "node": ">=0.8.22"
   },
   "dependencies": {},
+  "scripts": {
+    "test": "lein cljsbuild test"
+  },
   "files": ["datascript.js"]
 }
