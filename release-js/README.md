@@ -62,7 +62,7 @@ In fact, as long as you can provide functions to search the "eav" and "ave" inde
 # Installation
 
 ```
-npm install --save dataScript-async
+npm install --save datascript-async
 ```
 
 # Status
