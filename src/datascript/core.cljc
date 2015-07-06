@@ -256,43 +256,25 @@
 ;; Such datoms come from slice method where they are used as boundary markers.
 
 (defn cmp-datoms-eavt [^Datom d1, ^Datom d2]
-  (cond
-    (nil? d1)
-      1
-    (nil? d2)
-      -1
-    :else
   (combine-cmp
     (cmp-num (.-e d1) (.-e d2))
     (cmp (.-a d1) (.-a d2))
     (cmp-val (.-v d1) (.-v d2))
-    (cmp-num (.-tx d1) (.-tx d2)))))
+    (cmp-num (.-tx d1) (.-tx d2))))
 
 (defn cmp-datoms-aevt [^Datom d1, ^Datom d2]
-  (cond
-    (nil? d1)
-      1
-    (nil? d2)
-      -1
-    :else
   (combine-cmp
     (cmp (.-a d1) (.-a d2))
     (cmp-num (.-e d1) (.-e d2))
     (cmp-val (.-v d1) (.-v d2))
-    (cmp-num (.-tx d1) (.-tx d2)))))
+    (cmp-num (.-tx d1) (.-tx d2))))
 
 (defn cmp-datoms-avet [^Datom d1, ^Datom d2]
-  (cond
-    (nil? d1)
-      1
-    (nil? d2)
-      -1
-    :else
   (combine-cmp
     (cmp (.-a d1) (.-a d2))
     (cmp-val (.-v d1) (.-v d2))
     (cmp-num (.-e d1) (.-e d2))
-    (cmp-num (.-tx d1) (.-tx d2)))))
+    (cmp-num (.-tx d1) (.-tx d2))))
 
 
 ;; fast versions without nil checks
@@ -612,10 +594,10 @@
      (-write w ":schema ")
      (pr-writer (-schema db) w opts)
      (-write w ", :datoms ")
-    ;  (pr-sequential-writer w
-    ;                        (fn [d w opts]
-    ;                          (pr-sequential-writer w pr-writer "[" " " "]" opts [(.-e d) (.-a d) (.-v d) (.-tx d)]))
-    ;                        "[" " " "]" opts)
+     (pr-sequential-writer w
+                           (fn [d w opts]
+                             (pr-sequential-writer w pr-writer "[" " " "]" opts [(.-e d) (.-a d) (.-v d) (.-tx d)]))
+                           "[" " " "]" opts (-datoms db :eavt []))
      (-write w "}")))
 
 #?(:clj
@@ -777,11 +759,9 @@
         (update-in [:avet] btset/btset-disj removing cmp-datoms-avet-quick)))))
 
 (defn- transact-report [report datom]
-  (let [old-db (:db-after report)
-        new-db (with-datom old-db datom)]
   (-> report
-      (conj [:db-after new-db])
-      (update-in [:tx-data] conj datom))))
+      (update-in [:db-after] with-datom datom)
+      (update-in [:tx-data] conj datom)))
 
 (defn #?@(:clj  [^Boolean reverse-ref?]
           :cljs [^boolean reverse-ref?]) [attr]
@@ -1008,3 +988,4 @@
        (raise "Bad entity type at " entity ", expected map or vector"
               {:error :transact/syntax, :tx-data entity})
      )))
+
