@@ -30,18 +30,17 @@
 (def aevt (btset-by dc/cmp-datoms-aevt))
 (def avet (btset-by dc/cmp-datoms-avet))
 
-(defn empty-db
-  ([]
-    (set! eavt (btset-by dc/cmp-datoms-eavt))
-    (set! aevt (btset-by dc/cmp-datoms-aevt))
-    (set! avet (btset-by dc/cmp-datoms-avet))
-    (d/set-indexes
-      (fn
-        ([a] (slice eavt a a))
-        ([a b] (slice eavt a b)))
-      (fn
-        ([a] (slice avet a a))
-        ([a b] (slice avet a b))))))
+(defn empty-db []
+  (set! eavt (btset-by dc/cmp-datoms-eavt))
+  (set! aevt (btset-by dc/cmp-datoms-aevt))
+  (set! avet (btset-by dc/cmp-datoms-avet))
+  (d/set-indexes
+    (fn
+      ([a] (slice eavt a a))
+      ([a b] (slice eavt a b)))
+    (fn
+      ([a] (slice avet a a))
+      ([a b] (slice avet a b)))))
 
 (defn with-datom [db & datom]
   (set! eavt (conj eavt (apply dc/datom datom)))
