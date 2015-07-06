@@ -23,18 +23,25 @@
     "Kevin Lynagh (https://github.com/lynaghk)",
     "Bobby Calderwood (https://github.com/bobby)"
   ],
-  "license": "Eclipse",
+  "licenses": [
+    {
+      "type": "EPL",
+      "url": "https://github.com/IconCMO/datascript/blob/master/LICENSE"
+    }
+  ],
   "main": "./datascript.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/IconCMO/datascript"
   },
   "engines": {
-      "node": ">=0.8.22"
+    "node": ">=0.8.22"
   },
   "dependencies": {},
   "scripts": {
     "test": "lein cljsbuild test"
   },
-  "files": ["datascript.js"]
+  "files": [
+    "datascript.js"
+  ]
 }
