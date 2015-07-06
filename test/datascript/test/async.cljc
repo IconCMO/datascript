@@ -26,9 +26,9 @@
        (concat (subseq ss >= a <= b))
        (distinct-consecutive)))))
 
-(def eavt (btset-by dc/cmp-datoms-eavt))
-(def aevt (btset-by dc/cmp-datoms-aevt))
-(def avet (btset-by dc/cmp-datoms-avet))
+(def ^:dynamic eavt (btset-by dc/cmp-datoms-eavt))
+(def ^:dynamic aevt (btset-by dc/cmp-datoms-aevt))
+(def ^:dynamic avet (btset-by dc/cmp-datoms-avet))
 
 (defn empty-db []
   (set! eavt (btset-by dc/cmp-datoms-eavt))
