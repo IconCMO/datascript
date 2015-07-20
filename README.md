@@ -17,6 +17,10 @@ The intention with DataScript is to be a basic building block in client-side app
 
 ## Resources <a href="https://gitter.im/tonsky/datascript?utm_source=badge&amp;utm_medium=badge&amp;utm_campaign=pr-badge&amp;utm_content=badge"><img src="https://camo.githubusercontent.com/da2edb525cde1455a622c58c0effc3a90b9a181c/68747470733a2f2f6261646765732e6769747465722e696d2f4a6f696e253230436861742e737667" alt="Gitter" data-canonical-src="https://badges.gitter.im/Join%20Chat.svg" style="max-width:100%;"></a>
 
+Docs:
+
+- [Tips & tricks](https://github.com/tonsky/datascript/wiki/Tips-&-tricks)
+
 Posts:
 
 - [How DataScript fits into the current webdev ecosystem](http://tonsky.me/blog/decomposing-web-app-development/)
@@ -34,7 +38,7 @@ Projects using DataScript:
 
 - [Precursor](http://precursorapp.com), collaborative prototyping tool
 - [LightMesh](http://lightmesh.com), datacenter management
-- [PartsBox](https://partsbox.io), inventory management
+- [PartsBox](https://partsbox.io), electronic parts management 
 - [I am Fy](https://www.iamfy.co), accessories e-shop
 - [Acha-acha](http://acha-acha.co/), github achievements ([sources](https://github.com/someteam/acha), [code walkthrough](http://tonsky.me/blog/acha-acha/))
 - [Radiant](http://www.stuttaford.me/radiant/), datalog sketchpad ([sources](https://github.com/robert-stuttaford/stuttaford.me/tree/master/src/stuttaford/radiant))
@@ -55,7 +59,7 @@ For more examples, see [our acceptance test suite](test/datascript/test/).
 :dependencies [
   [org.clojure/clojure "1.7.0"]
   [org.clojure/clojurescript "0.0-3291"]
-  [datascript "0.11.5"]
+  [datascript "0.11.6"]
 ]
 ```
 
@@ -133,7 +137,7 @@ _Note:_ DataScript 0.11.0 and later will only work with CLJS 0.0-3196 and later
 DataScript can be used from any JS engine without additional dependencies:
 
 ```html
-<script src="https://github.com/tonsky/datascript/releases/download/0.11.5/datascript-0.11.5.min.js"></script>
+<script src="https://github.com/tonsky/datascript/releases/download/0.11.6/datascript-0.11.6.min.js"></script>
 ```
 
 or as a CommonJS module ([npm page](https://www.npmjs.org/package/datascript)):

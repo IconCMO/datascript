@@ -1,12 +1,13 @@
 {
   "name": "datascript-async",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "An implementation of the datalog query language with user-provided indexes.",
   "homepage": "https://github.com/IconCMO/datascript",
   "author": "Icon Systems, Inc.",
   "keywords": [
     "data",
     "database",
+    "triplestore",
     "datalog",
     "persistent",
     "immutable",

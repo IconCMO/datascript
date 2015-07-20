@@ -409,7 +409,10 @@
                 (btset/slice (.-avet db) (resolve-datom db nil attr start nil)
                              (resolve-datom db nil attr end nil))))
 
-(defn db? [x] (and (instance? ISearch x) (instance? IIndexAccess x) (instance? IDB x)))
+(defn db? [x]
+  (and (satisfies? ISearch x)
+       (satisfies? IIndexAccess x)
+       (satisfies? IDB x)))
 
 ;; ----------------------------------------------------------------------------
 (defrecord-updatable FilteredDB [unfiltered-db pred #?(:clj __hash)]
@@ -520,6 +523,7 @@
 (defn ^DB empty-db
   ([] (empty-db default-schema))
   ([schema]
+    {:pre [(or (nil? schema) (map? schema))]}
     (map->DB {
       :schema  (validate-schema schema)
       :eavt    (btset/btset-by cmp-datoms-eavt)
@@ -662,6 +666,7 @@
   (is-attr? db attr :db/isComponent))
 
 (defn entid [db eid]
+  {:pre [(db? db)]}
   (cond
     (string? eid) eid
     (number? eid) eid
@@ -908,8 +913,10 @@
               new-eid      (or (:db/id upserted) (next-eid db))
               new-entity   (assoc upserted :db/id new-eid)
               new-report   (cond
-                             (nil? old-eid) (allocate-eid report new-eid)
-                             (shim/neg-number? old-eid) (allocate-eid report old-eid new-eid)
+                             (nil? old-eid)                  (allocate-eid report new-eid)
+                             (shim/neg-number? old-eid)      (allocate-eid report old-eid new-eid)
+                             (and (number? old-eid)
+                                  (> old-eid (:max-eid db))) (allocate-eid report old-eid)
                              :else report)]
           (recur new-report (concat (explode db new-entity) entities)))
 

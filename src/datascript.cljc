@@ -19,7 +19,9 @@
 
 (def  q dq/q)
 (def  entity de/entity)
-(defn entity-db [^Entity entity] (.-db entity))
+(defn entity-db [^Entity entity]
+  {:pre [(de/entity? entity)]}
+  (.-db entity))
 
 (def  datom dc/datom)
 
@@ -39,6 +41,7 @@
   (instance? FilteredDB x))
 
 (defn filter [db pred]
+  {:pre [(dc/db? db)]}
   (if (is-filtered db)
     (let [^FilteredDB fdb db
           u (.-unfiltered-db fdb)]
@@ -48,6 +51,7 @@
 (defn with
   ([db tx-data] (with db tx-data nil))
   ([db tx-data tx-meta]
+    {:pre [(dc/db? db)]}
     (if (is-filtered db)
       (throw (ex-info "Filtered DB cannot be modified" {:error :transaction/filtered}))
       (dc/transact-tx-data (dc/map->TxReport
@@ -58,27 +62,35 @@
                                :tx-meta   tx-meta}) tx-data))))
 
 (defn db-with [db tx-data]
+  {:pre [(dc/db? db)]}
   (:db-after (with db tx-data)))
 
 (defn datoms
-  ([db index] (dc/-datoms db index []))
-  ([db index c1] (dc/-datoms db index [c1]))
-  ([db index c1 c2] (dc/-datoms db index [c1 c2]))
-  ([db index c1 c2 c3] (dc/-datoms db index [c1 c2 c3]))
-  ([db index c1 c2 c3 c4] (dc/-datoms db index [c1 c2 c3 c4])))
+  ([db index]             {:pre [(dc/db? db)]} (dc/-datoms db index []))
+  ([db index c1]          {:pre [(dc/db? db)]} (dc/-datoms db index [c1]))
+  ([db index c1 c2]       {:pre [(dc/db? db)]} (dc/-datoms db index [c1 c2]))
+  ([db index c1 c2 c3]    {:pre [(dc/db? db)]} (dc/-datoms db index [c1 c2 c3]))
+  ([db index c1 c2 c3 c4] {:pre [(dc/db? db)]} (dc/-datoms db index [c1 c2 c3 c4])))
 
 (defn seek-datoms
-  ([db index] (dc/-seek-datoms db index []))
-  ([db index c1] (dc/-seek-datoms db index [c1]))
-  ([db index c1 c2] (dc/-seek-datoms db index [c1 c2]))
-  ([db index c1 c2 c3] (dc/-seek-datoms db index [c1 c2 c3]))
-  ([db index c1 c2 c3 c4] (dc/-seek-datoms db index [c1 c2 c3 c4])))
+  ([db index]             {:pre [(dc/db? db)]} (dc/-seek-datoms db index []))
+  ([db index c1]          {:pre [(dc/db? db)]} (dc/-seek-datoms db index [c1]))
+  ([db index c1 c2]       {:pre [(dc/db? db)]} (dc/-seek-datoms db index [c1 c2]))
+  ([db index c1 c2 c3]    {:pre [(dc/db? db)]} (dc/-seek-datoms db index [c1 c2 c3]))
+  ([db index c1 c2 c3 c4] {:pre [(dc/db? db)]} (dc/-seek-datoms db index [c1 c2 c3 c4])))
 
-(def index-range dc/-index-range)
+(defn index-range [db attr start end]
+  {:pre [(dc/db? db)]}
+  (dc/-index-range db attr start end))
 
 (def entid dc/entid)
 
 ;; Conn
+
+(defn conn? [conn]
+  (and (instance? #?(:clj  clojure.lang.Atom
+                     :cljs cljs.core/Atom) conn)
+       (dc/db? @conn)))
 
 (defn create-conn
   ([] (create-conn dc/default-schema))
@@ -87,6 +99,7 @@
           :meta { :listeners  (atom {}) })))
 
 (defn -transact! [conn tx-data tx-meta]
+  {:pre [(conn? conn)]}
   (let [report (atom nil)]
     (swap! conn (fn [db]
                   (let [r (with db tx-data tx-meta)]
@@ -97,6 +110,7 @@
 (defn transact!
   ([conn tx-data] (transact! conn tx-data nil))
   ([conn tx-data tx-meta]
+    {:pre [(conn? conn)]}
     (let [report (-transact! conn tx-data tx-meta)]
       (doseq [[_ callback] @(:listeners (meta conn))]
         (callback report))
@@ -105,10 +119,12 @@
 (defn listen!
   ([conn callback] (listen! conn (rand) callback))
   ([conn key callback]
+     {:pre [(conn? conn)]}
      (swap! (:listeners (meta conn)) assoc key callback)
      key))
 
 (defn unlisten! [conn key]
+  {:pre [(conn? conn)]}
   (swap! (:listeners (meta conn)) dissoc key))
 
 
@@ -144,11 +160,14 @@
 (defn resolve-tempid [_db tempids tempid]
   (get tempids tempid))
 
-(def db deref)
+(defn db [conn]
+  {:pre [(conn? conn)]}
+  @conn)
 
 (defn transact
   ([conn tx-data] (transact conn tx-data nil))
   ([conn tx-data tx-meta]
+    {:pre [(conn? conn)]}
     (let [res (transact! conn tx-data tx-meta)]
       #?(:cljs
          (reify
@@ -184,6 +203,7 @@
 (defn transact-async
   ([conn tx-data] (transact-async conn tx-data nil))
   ([conn tx-data tx-meta]
+    {:pre [(conn? conn)]}
     (future-call #(transact! conn tx-data tx-meta))))
 
 (defn- rand-bits [pow]
@@ -198,10 +218,14 @@
         (< c l) (str (apply str (repeat (- l c) "0")) s)
         :else   s))))
 
-(defn squuid []
+(defn squuid
+  ([]
+    (squuid #?(:clj  (System/currentTimeMillis)
+               :cljs (.getTime (js/Date.)))))
+  ([msec]
   #?(:clj
       (let [uuid     (UUID/randomUUID)
-            time     (int (/ (System/currentTimeMillis) 1000))
+            time     (int (/ msec 1000))
             high     (.getMostSignificantBits uuid)
             low      (.getLeastSignificantBits uuid)
             new-high (bit-or (bit-and high 0x00000000FFFFFFFF)
@@ -210,14 +234,14 @@
      :cljs
        (uuid
          (str
-               (-> (int (/ (.getTime (js/Date.)) 1000))
+               (-> (int (/ msec 1000))
                    (to-hex-string 8))
            "-" (-> (rand-bits 16) (to-hex-string 4))
            "-" (-> (rand-bits 16) (bit-and 0x0FFF) (bit-or 0x4000) (to-hex-string 4))
            "-" (-> (rand-bits 16) (bit-and 0x3FFF) (bit-or 0x8000) (to-hex-string 4))
            "-" (-> (rand-bits 16) (to-hex-string 4))
                (-> (rand-bits 16) (to-hex-string 4))
-               (-> (rand-bits 16) (to-hex-string 4))))))
+               (-> (rand-bits 16) (to-hex-string 4)))))))
 
 (defn squuid-time-millis [uuid]
   #?(:clj (-> (.getMostSignificantBits ^UUID uuid)

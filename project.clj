@@ -1,4 +1,4 @@
-(defproject datascript "0.11.5"
+(defproject datascript "0.11.6"
   :description "An implementation of Datomic in-memory database and Datalog query engine in ClojureScript"
   :license {:name "Eclipse"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
@@ -19,7 +19,8 @@
 
   :aliases {"test-clj"     ["run" "-m" "datascript.test/test-most"]
             "test-clj-all" ["run" "-m" "datascript.test/test-all"]
-            "noderepl"     ["run" "-m" "clojure.main" "repl.clj"]}
+            "node-repl"    ["run" "-m" "user/node-repl"]
+            "browser-repl" ["run" "-m" "user/browser-repl"]}
 
   :cljsbuild {
     :builds [
@@ -41,7 +42,7 @@
 
   :profiles {
     :dev {
-      :source-paths ["bench/src" "test"]
+      :source-paths ["bench/src" "test" "dev"]
       :plugins [
         [lein-cljsbuild "1.0.6"]
       ]
@@ -60,7 +61,7 @@
               :recompile-dependents false
             }}
           { :id "none"
-            :source-paths ["src" "bench/src" "test"]
+            :source-paths ["src" "bench/src" "test" "dev"]
             :compiler {
               :main          datascript.test
               :output-to     "target/datascript.js"

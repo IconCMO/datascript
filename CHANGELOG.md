@@ -1,3 +1,12 @@
+# 0.11.6
+
+- msec argument to squuid (#95, #97)
+- lookup refs in JS API `pull`, `pull_many`, `entity` (#94, thx [Matt Senior](https://github.com/mattsenior))
+- fix in Pull API for reverse non-component attributes (#91, thx [Matt Senior](https://github.com/mattsenior))
+- Node.js and Browser repls for dev profile (#93)
+- Preconditions to validate db/conn arguments (#101)
+- Id allocation bug (#66)
+
 # 0.11.5
 
 - Ported BTSet to JVM
