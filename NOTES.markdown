@@ -20,11 +20,11 @@ This will build the `release/datascript.js` file. Then, from within `release-js`
 
 You can actually get a command-line into your current program. While there are a bunch of ways the ClojureScript wiki says about setting up a REPL, we found the easiest was a Node.js REPL with a bit of a helper script. To start it, run:
 
-`rlwrap lein noderepl`
+`rlwrap lein node-repl`
 
 - The `rlwrap` appears to give you up-arrow abilities on the command line.
 - `lein` is the main Leiningen command.
-- `noderepl` is an alias defined in `project.clj` to run the `repl.clj` script.
+- `node-repl` is an alias defined in `project.clj` to run the `repl.clj` script.
 
 This will automatically re-compile source file changes, which you can then reload into the environment via something like `(require 'datascript.file :reload)`. You can then either use the re-defined functionality (i.e. `(execute-a-function parameter)`) or rerun tests or whatever.
 
